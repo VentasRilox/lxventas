@@ -9,6 +9,7 @@ import Visita from './pages/Visita.jsx'
 import Venta from './pages/Venta.jsx'
 import Seguimiento from './pages/Seguimiento.jsx'
 import NuevoProspecto from './pages/NuevoProspecto.jsx'
+import ImportarProspectos from './pages/ImportarProspectos.jsx'
 import Prospecto from './pages/Prospecto.jsx'
 import Avance from './pages/Avance.jsx'
 import Panel from './pages/Panel.jsx'
@@ -44,6 +45,7 @@ export default function App() {
               <Route path="/venta" element={<Venta />} />
               <Route path="/seguimiento" element={<Seguimiento />} />
               <Route path="/seguimiento/nuevo" element={<NuevoProspecto />} />
+              <Route path="/seguimiento/importar" element={<ImportarProspectos />} />
               <Route path="/seguimiento/:id" element={<Prospecto />} />
               <Route path="/avance" element={<Avance />} />
             </Route>

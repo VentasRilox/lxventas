@@ -39,6 +39,9 @@ export default function Seguimiento() {
           Nuevo
         </Link>
       </div>
+      <Link to="/seguimiento/importar" className="small">
+        Agregar varios de una vez pegando una lista
+      </Link>
       {error && <p className="aviso aviso--crit">{error}</p>}
 
       <div className="tabs">
