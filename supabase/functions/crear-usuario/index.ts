@@ -5,8 +5,9 @@
 // contraseña nueva. El navegador no puede hacerlo: necesita la llave secreta,
 // que solo existe aquí, en el servidor.
 //
-// Seguridad: se identifica a quien llama con su propio token. Solo un perfil
-// con rol 'jefe' y activo puede continuar, y solo dentro de su empresa.
+// Seguridad: se identifica a quien llama con su propio token.
+//   * jefe activo: crea cualquier rol dentro de su empresa.
+//   * supervisor activo: solo crea asesores, y solo en las zonas que supervisa.
 // La contraseña temporal se genera aquí y se devuelve una sola vez.
 // ============================================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -53,14 +54,22 @@ Deno.serve(async (req) => {
     const { data: quien, error: eQuien } = await conPoderes.auth.getUser(token)
     if (eQuien || !quien?.user) return json({ error: 'Sesión inválida. Vuelve a entrar.' }, 401)
 
-    // 2) Su perfil: debe ser jefe y estar activo.
+    // 2) Su perfil: jefe o supervisor, y activo.
     const { data: jefe } = await conPoderes
       .from('perfiles')
       .select('id, empresa_id, rol, activo')
       .eq('usuario_id', quien.user.id)
       .maybeSingle()
-    if (!jefe || jefe.rol !== 'jefe' || jefe.activo !== true) {
-      return json({ error: 'Solo el jefe de ventas puede administrar el equipo.' }, 403)
+    if (!jefe || !['jefe', 'supervisor'].includes(jefe.rol) || jefe.activo !== true) {
+      return json({ error: 'Solo el jefe de ventas o un supervisor pueden administrar el equipo.' }, 403)
+    }
+    const esSupervisor = jefe.rol === 'supervisor'
+
+    // Zonas que supervisa quien llama (solo importa si es supervisor).
+    let misZonas: string[] = []
+    if (esSupervisor) {
+      const { data: zs } = await conPoderes.from('zonas').select('id').eq('empresa_id', jefe.empresa_id).eq('supervisor_id', jefe.id)
+      misZonas = (zs ?? []).map((z) => z.id)
     }
 
     const body = await req.json().catch(() => ({}))
@@ -70,10 +79,13 @@ Deno.serve(async (req) => {
     if (body.accion === 'clave') {
       const { data: destino } = await conPoderes
         .from('perfiles')
-        .select('usuario_id, empresa_id')
+        .select('usuario_id, empresa_id, rol, zona_id')
         .eq('id', String(body.perfil_id ?? ''))
         .maybeSingle()
       if (!destino || destino.empresa_id !== jefe.empresa_id) return json({ error: 'No se encontró a esa persona.' }, 404)
+      if (esSupervisor && (destino.rol !== 'asesor' || !misZonas.includes(destino.zona_id))) {
+        return json({ error: 'Solo puedes cambiar la contraseña de los asesores de tu equipo.' }, 403)
+      }
       const { error: eClave } = await conPoderes.auth.admin.updateUserById(destino.usuario_id, { password: contrasena })
       if (eClave) return json({ error: 'No se pudo cambiar la contraseña: ' + eClave.message }, 400)
       return json({ ok: true, contrasena_temporal: contrasena })
@@ -91,6 +103,10 @@ Deno.serve(async (req) => {
     if (!/^[a-z0-9._@-]+$/.test(usuario)) return json({ error: 'El usuario solo puede llevar letras, números, punto y guion.' }, 400)
     if (!ROLES.includes(rol)) return json({ error: 'Rol no válido.' }, 400)
 
+    if (esSupervisor && rol !== 'asesor') return json({ error: 'Un supervisor solo puede agregar asesores.' }, 403)
+    if (esSupervisor && (!zonaId || !misZonas.includes(zonaId))) {
+      return json({ error: 'Elige una zona de las que supervisas.' }, 400)
+    }
     if (rol !== 'asesor') zonaId = null
     if (zonaId) {
       const { data: zona } = await conPoderes.from('zonas').select('empresa_id').eq('id', zonaId).maybeSingle()

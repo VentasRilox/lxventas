@@ -52,8 +52,11 @@ export default function App() {
               <Route path="/panel" element={<Panel />} />
             </Route>
 
-            <Route element={<RutaProtegida roles={['jefe']} />}>
+            <Route element={<RutaProtegida roles={['jefe', 'supervisor']} />}>
               <Route path="/equipo" element={<Equipo />} />
+            </Route>
+
+            <Route element={<RutaProtegida roles={['jefe']} />}>
               <Route path="/ajustes" element={<Ajustes />} />
             </Route>
           </Route>

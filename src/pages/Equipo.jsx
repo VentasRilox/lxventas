@@ -18,13 +18,19 @@ async function llamarFuncion(cuerpo) {
     } catch {
       detalle = ''
     }
+    if (!detalle && error.context?.status === 404) {
+      return { error: 'Falta instalar la función "crear-usuario" en Supabase. Sin ella no se pueden crear accesos.' }
+    }
     return { error: detalle || traducirError(error) }
   }
   return data?.error ? { error: data.error } : { data }
 }
 
 export default function Equipo() {
-  const { perfil, cfg, zonas, recargarEmpresa } = useSesion()
+  const { perfil, rol, cfg, zonas, recargarEmpresa } = useSesion()
+  const esJefe = rol === 'jefe'
+  const [motivos, setMotivos] = useState({})
+  const [pidiendo, setPidiendo] = useState(null)
   const [perfiles, setPerfiles] = useState(null)
   const [nuevo, setNuevo] = useState({ nombre: '', usuario: '', rol: 'asesor', zona_id: '', meta_mensual: '20', telefono: '' })
   const [zonaNueva, setZonaNueva] = useState({ nombre: '', meta_mensual: '60' })
@@ -98,7 +104,30 @@ export default function Equipo() {
     recargarEmpresa()
   }
 
+  async function pedirBaja(p) {
+    const { error } = await supabase.rpc('solicitar_baja', { p_perfil: p.id, p_motivo: motivos[p.id] ?? '' })
+    if (error) setAviso(['crit', /solicitar_baja/.test(error.message) ? 'Falta ejecutar la migración 002 en Supabase.' : traducirError(error)])
+    else setAviso(['ok', `Baja de ${titulo(p.nombre)} enviada al jefe de ventas para su autorización.`])
+    setPidiendo(null)
+    cargar()
+  }
+
+  async function cancelarBaja(p) {
+    const { error } = await supabase.rpc('cancelar_baja', { p_perfil: p.id })
+    if (error) setAviso(['crit', traducirError(error)])
+    cargar()
+  }
+
+  async function aprobarBaja(p) {
+    await editarPerfil(p, { activo: false, baja_solicitada_por: null, baja_motivo: null, baja_solicitada_en: null })
+    setAviso(['ok', `${titulo(p.nombre)} quedó desactivado. Sus registros se conservan; puedes pasar su cartera a otro asesor desde Panel → Seguimiento.`])
+  }
+
   const supervisores = perfiles.filter((p) => p.rol === 'supervisor' && p.activo)
+  const misZonas = esJefe ? zonas.filter((z) => z.activa) : zonas.filter((z) => z.activa && z.supervisor_id === perfil.id)
+  const bajas = perfiles.filter((p) => p.baja_solicitada_en && p.activo)
+  const visibles = esJefe ? perfiles : perfiles.filter((p) => p.rol === 'asesor')
+  const rolesNuevos = esJefe ? ROLES : ROLES.slice(0, 1)
 
   return (
     <main className="contenido">
@@ -111,94 +140,140 @@ export default function Equipo() {
         </div>
       )}
 
+      {!esJefe && (
+        <p className="muted">
+          {misZonas.length
+            ? `Tu equipo: los asesores de ${nz} ${misZonas.map((z) => titulo(z.nombre)).join(' y ')}. Puedes agregar asesores y pedir su baja; la baja la autoriza el jefe de ventas.`
+            : `Todavía no tienes ${nz} asignada. Pide al jefe de ventas que te asigne una para poder armar tu equipo.`}
+        </p>
+      )}
+
+      {esJefe && bajas.length > 0 && (
+        <section>
+          <h2>Bajas por autorizar</h2>
+          <ul className="lista">
+            {bajas.map((p) => (
+              <li key={p.id}>
+                <span>
+                  {titulo(p.nombre)}
+                  <small>
+                    Pedida por {titulo(perfiles.find((x) => x.id === p.baja_solicitada_por)?.nombre ?? 'un supervisor')}
+                    {p.baja_motivo ? ` · ${p.baja_motivo}` : ''}
+                  </small>
+                </span>
+                <span className="acciones">
+                  <button type="button" className="btn btn--peligro btn--chico" onClick={() => aprobarBaja(p)}>Autorizar baja</button>
+                  <button type="button" className="btn btn--sec btn--chico" onClick={() => cancelarBaja(p)}>Rechazar</button>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {esJefe && (
       <section>
         <h2>{nz}</h2>
-        <div className="tabla">
-          <table>
-            <thead><tr><th>{nz}</th><th>Meta del mes</th><th>Supervisor</th><th>Estado</th></tr></thead>
-            <tbody>
-              {zonas.map((z) => (
-                <tr key={z.id}>
-                  <td>{titulo(z.nombre)}</td>
-                  <td>
-                    <input aria-label={`Meta de ${z.nombre}`} inputMode="numeric" style={{ width: 90 }} defaultValue={z.meta_mensual} onBlur={(e) => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== z.meta_mensual) editarZona(z, { meta_mensual: n }) }} />
-                  </td>
-                  <td>
-                    <select aria-label={`Supervisor de ${z.nombre}`} value={z.supervisor_id ?? ''} onChange={(e) => editarZona(z, { supervisor_id: e.target.value || null })}>
-                      <option value="">Por asignar</option>
-                      {supervisores.map((s) => <option key={s.id} value={s.id}>{titulo(s.nombre)}</option>)}
-                    </select>
-                  </td>
-                  <td>
-                    <button type="button" className="btn btn--sec btn--chico" onClick={() => editarZona(z, { activa: !z.activa })}>
-                      {z.activa ? 'Activa' : 'Cerrada'}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-              {zonas.length === 0 && <tr><td colSpan="4" className="muted">Aún no hay {nz}. Agrega la primera aquí abajo.</td></tr>}
-            </tbody>
-          </table>
+        <div className="tarjetas">
+          {zonas.map((z) => (
+            <div className="tarjeta" key={z.id} style={z.activa ? undefined : { opacity: 0.6 }}>
+              <div className="fila">
+                <h3>{titulo(z.nombre)}</h3>
+                <button type="button" className="btn btn--sec btn--chico" onClick={() => editarZona(z, { activa: !z.activa })}>
+                  {z.activa ? 'Activa' : 'Cerrada'}
+                </button>
+              </div>
+              <div className="grid2">
+                <label htmlFor={'zmeta_' + z.id}>
+                  Meta del mes
+                  <input id={'zmeta_' + z.id} inputMode="numeric" defaultValue={z.meta_mensual} onBlur={(e) => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== z.meta_mensual) editarZona(z, { meta_mensual: n }) }} />
+                </label>
+                <label htmlFor={'zsup_' + z.id}>
+                  Supervisor
+                  <select id={'zsup_' + z.id} value={z.supervisor_id ?? ''} onChange={(e) => editarZona(z, { supervisor_id: e.target.value || null })}>
+                    <option value="">Por asignar</option>
+                    {supervisores.map((sp) => <option key={sp.id} value={sp.id}>{titulo(sp.nombre)}</option>)}
+                  </select>
+                </label>
+              </div>
+            </div>
+          ))}
         </div>
+        {zonas.length === 0 && <p className="muted">Aún no hay {nz}. Agrega la primera aquí abajo.</p>}
         <form className="grid2" onSubmit={crearZona}>
           <Campo etiqueta={`Nueva ${nz}`} nombre="nombre" f={zonaNueva} setF={setZonaNueva} prefijo="z" required />
           <Campo etiqueta="Meta del mes" nombre="meta_mensual" f={zonaNueva} setF={setZonaNueva} prefijo="z" inputMode="numeric" />
           <button type="submit" className="btn btn--sec full">Agregar {nz}</button>
         </form>
       </section>
+      )}
 
       <section>
-        <h2>Personas</h2>
-        <div className="tabla">
-          <table>
-            <thead><tr><th>Nombre</th><th>Usuario</th><th>Rol</th><th>{nz}</th><th>Meta</th><th></th></tr></thead>
-            <tbody>
-              {perfiles.map((p) => (
-                <tr key={p.id} style={p.activo ? undefined : { opacity: 0.55 }}>
-                  <td>{titulo(p.nombre)}</td>
-                  <td>{p.usuario.replace('@' + DOMINIO_USUARIOS, '')}</td>
-                  <td>{ROLES.find((r) => r[0] === p.rol)?.[1]}</td>
-                  <td>
-                    {p.rol === 'asesor' ? (
-                      <select aria-label={`${nz} de ${p.nombre}`} value={p.zona_id ?? ''} onChange={(e) => editarPerfil(p, { zona_id: e.target.value || null })}>
-                        <option value="">Sin asignar</option>
-                        {zonas.map((z) => <option key={z.id} value={z.id}>{titulo(z.nombre)}</option>)}
-                      </select>
-                    ) : p.rol === 'supervisor' ? (
-                      zonas.filter((z) => z.supervisor_id === p.id).map((z) => titulo(z.nombre)).join(', ') || 'Asígnala arriba'
-                    ) : (
-                      'Todas'
-                    )}
-                  </td>
-                  <td>
-                    {p.rol === 'asesor' && (
-                      <input aria-label={`Meta de ${p.nombre}`} inputMode="numeric" style={{ width: 80 }} defaultValue={p.meta_mensual} onBlur={(e) => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== p.meta_mensual) editarPerfil(p, { meta_mensual: n }) }} />
-                    )}
-                  </td>
-                  <td>
-                    {p.id !== perfil.id && (
-                      <div className="acciones">
-                        <button type="button" className="btn btn--sec btn--chico" disabled={ocupado} onClick={() => nuevaClave(p)}>Nueva contraseña</button>
-                        <button type="button" className="btn btn--sec btn--chico" onClick={() => editarPerfil(p, { activo: !p.activo })}>{p.activo ? 'Desactivar' : 'Activar'}</button>
-                      </div>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <h2>{esJefe ? 'Personas' : 'Mis asesores'}</h2>
+        <div className="tarjetas">
+          {visibles.map((p) => (
+            <div className="tarjeta" key={p.id} style={p.activo ? undefined : { opacity: 0.6 }}>
+              <div className="fila">
+                <h3>{titulo(p.nombre)}</h3>
+                <span className={`pill ${p.activo ? (p.baja_solicitada_en ? 'warn' : 'neu') : 'crit'}`}>
+                  {!p.activo ? 'Inactivo' : p.baja_solicitada_en ? 'Baja pedida' : ROLES.find((r) => r[0] === p.rol)?.[1]}
+                </span>
+              </div>
+              <p className="small muted">
+                Usuario: {p.usuario.replace('@' + DOMINIO_USUARIOS, '')}
+                {p.rol === 'supervisor' && ` · ${nz}: ${zonas.filter((z) => z.supervisor_id === p.id).map((z) => titulo(z.nombre)).join(', ') || 'asígnala arriba'}`}
+                {p.rol === 'asesor' && !esJefe && ` · ${nz} ${titulo(zonas.find((z) => z.id === p.zona_id)?.nombre ?? '')} · meta ${p.meta_mensual}`}
+              </p>
+              {p.rol === 'asesor' && esJefe && (
+                <div className="grid2">
+                  <label htmlFor={'zona_' + p.id}>
+                    {nz}
+                    <select id={'zona_' + p.id} value={p.zona_id ?? ''} onChange={(e) => editarPerfil(p, { zona_id: e.target.value || null })}>
+                      <option value="">Sin asignar</option>
+                      {zonas.map((z) => <option key={z.id} value={z.id}>{titulo(z.nombre)}</option>)}
+                    </select>
+                  </label>
+                  <label htmlFor={'meta_' + p.id}>
+                    Meta mensual
+                    <input id={'meta_' + p.id} inputMode="numeric" defaultValue={p.meta_mensual} onBlur={(e) => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== p.meta_mensual) editarPerfil(p, { meta_mensual: n }) }} />
+                  </label>
+                </div>
+              )}
+              {p.id !== perfil.id && (
+                <div className="acciones">
+                  <button type="button" className="btn btn--sec btn--chico" disabled={ocupado} onClick={() => nuevaClave(p)}>Nueva contraseña</button>
+                  {esJefe && (
+                    <button type="button" className="btn btn--sec btn--chico" onClick={() => editarPerfil(p, { activo: !p.activo })}>{p.activo ? 'Desactivar' : 'Activar'}</button>
+                  )}
+                  {!esJefe && p.activo && !p.baja_solicitada_en && (
+                    <button type="button" className="btn btn--sec btn--chico" onClick={() => setPidiendo(pidiendo === p.id ? null : p.id)}>Pedir baja</button>
+                  )}
+                  {!esJefe && p.baja_solicitada_en && (
+                    <button type="button" className="btn btn--sec btn--chico" onClick={() => cancelarBaja(p)}>Cancelar la baja</button>
+                  )}
+                </div>
+              )}
+              {pidiendo === p.id && (
+                <div className="seccion">
+                  <input aria-label="Motivo de la baja" placeholder="Motivo de la baja" value={motivos[p.id] ?? ''} onChange={(e) => setMotivos({ ...motivos, [p.id]: e.target.value })} />
+                  <button type="button" className="btn btn--peligro btn--chico" onClick={() => pedirBaja(p)}>Enviar al jefe</button>
+                </div>
+              )}
+            </div>
+          ))}
         </div>
+        {visibles.length === 0 && <p className="muted">Aún no tienes asesores. Agrega el primero aquí abajo.</p>}
       </section>
 
       <section>
-        <h2>Agregar una persona</h2>
+        <h2>{esJefe ? 'Agregar una persona' : 'Agregar un asesor'}</h2>
         <form className="grid2" onSubmit={crear}>
           <Campo etiqueta="Nombre completo" nombre="nombre" f={nuevo} setF={setNuevo} full required autoComplete="off" />
           <Campo etiqueta="Usuario para entrar (sin espacios)" nombre="usuario" f={nuevo} setF={setNuevo} required autoCapitalize="none" autoComplete="off" pattern="[A-Za-z0-9._@\-]+" placeholder="ej.: milton" />
           <label htmlFor="n_rol">
             Rol
             <select id="n_rol" value={nuevo.rol} onChange={(e) => setNuevo({ ...nuevo, rol: e.target.value })}>
-              {ROLES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+              {rolesNuevos.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
             </select>
           </label>
           {nuevo.rol === 'asesor' && (
@@ -207,7 +282,7 @@ export default function Equipo() {
                 {nz}
                 <select id="n_zona" value={nuevo.zona_id} onChange={(e) => setNuevo({ ...nuevo, zona_id: e.target.value })} required>
                   <option value="">Elige</option>
-                  {zonas.filter((z) => z.activa).map((z) => <option key={z.id} value={z.id}>{titulo(z.nombre)}</option>)}
+                  {misZonas.map((z) => <option key={z.id} value={z.id}>{titulo(z.nombre)}</option>)}
                 </select>
               </label>
               <Campo etiqueta="Meta mensual de ventas" nombre="meta_mensual" f={nuevo} setF={setNuevo} inputMode="numeric" />
@@ -216,7 +291,9 @@ export default function Equipo() {
           <Campo etiqueta="Celular (opcional)" nombre="telefono" f={nuevo} setF={setNuevo} inputMode="numeric" />
           <button type="submit" className="btn full" disabled={ocupado}>{ocupado ? 'Creando...' : 'Crear acceso'}</button>
         </form>
-        <p className="small muted">Al crear el acceso verás su contraseña una sola vez. El supervisor se asigna a su {nz} en la tabla de arriba.</p>
+        <p className="small muted">
+          Al crear el acceso verás su contraseña una sola vez.{esJefe ? ` El supervisor se asigna a su ${nz} en la tabla de arriba.` : ''}
+        </p>
       </section>
     </main>
   )

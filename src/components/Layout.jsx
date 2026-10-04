@@ -9,7 +9,7 @@ const ROLES = { asesor: 'Asesor', supervisor: 'Supervisor', jefe: 'Jefe de venta
 
 function enlaces(rol, contacto) {
   if (rol === 'asesor') return [['/hoy', 'Hoy'], ['/visita', 'Visita'], ['/venta', 'Venta'], ['/seguimiento', contacto + 's'], ['/avance', 'Mi avance']]
-  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/hoy', 'Hoy'], ['/visita', 'Visita'], ['/venta', 'Venta'], ['/seguimiento', contacto + 's']]
+  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/seguimiento', contacto + 's'], ['/visita', 'Visita'], ['/venta', 'Venta'], ['/equipo', 'Equipo']]
   if (rol === 'jefe') return [['/panel', 'Panel'], ['/seguimiento', contacto + 's'], ['/venta', 'Venta'], ['/equipo', 'Equipo'], ['/ajustes', 'Ajustes']]
   return [['/panel', 'Panel']]
 }
