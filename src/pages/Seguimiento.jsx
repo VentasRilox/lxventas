@@ -1,0 +1,82 @@
+import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { useSesion } from '../lib/SesionProvider.jsx'
+import { useProspectos } from '../lib/useDatos'
+import { fechaCorta, fechaLocalHoy } from '../lib/fecha'
+import { titulo } from '../lib/reglas'
+import PantallaEstado from '../components/PantallaEstado.jsx'
+
+const ESTADOS = [
+  ['abierto', 'En seguimiento'],
+  ['ganado', 'Compraron'],
+  ['pausado', 'Para marzo'],
+  ['perdido', 'No compraron'],
+]
+const PILL = { alto: 'ok', medio: 'warn', bajo: 'neu' }
+
+export default function Seguimiento() {
+  const { cfg, rol, perfil } = useSesion()
+  const { prospectos, cargando, error } = useProspectos()
+  const [estado, setEstado] = useState('abierto')
+  const [busca, setBusca] = useState('')
+  const hoy = fechaLocalHoy()
+  const contacto = cfg?.nombre_contacto ?? 'Contacto'
+
+  const lista = useMemo(() => {
+    const q = busca.trim().toUpperCase()
+    return prospectos
+      .filter((p) => p.estado === estado)
+      .filter((p) => !q || p.nombre.includes(q) || (p.lugar ?? '').includes(q) || (p.celular ?? '').includes(q))
+  }, [prospectos, estado, busca])
+
+  if (cargando) return <PantallaEstado mensaje="Cargando..." />
+
+  return (
+    <main className="contenido contenido--angosto">
+      <div className="fila">
+        <h1>{contacto}s en seguimiento</h1>
+        <Link to="/seguimiento/nuevo" className="btn btn--chico">
+          Nuevo
+        </Link>
+      </div>
+      {error && <p className="aviso aviso--crit">{error}</p>}
+
+      <div className="tabs">
+        {ESTADOS.map(([v, t]) => (
+          <button key={v} type="button" className="tab" aria-pressed={estado === v} onClick={() => setEstado(v)}>
+            {t} ({prospectos.filter((p) => p.estado === v).length})
+          </button>
+        ))}
+      </div>
+      <input placeholder="Buscar por nombre, celular o lugar" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar" />
+
+      <ul className="lista">
+        {lista.map((p) => (
+          <li key={p.id}>
+            <Link className="item" to={`/seguimiento/${p.id}`}>
+              {titulo(p.nombre)}
+              <small>
+                {[p.lugar, titulo(p.condicion), rol !== 'asesor' && p.asesor_id !== perfil.id && 'de otro asesor'].filter(Boolean).join(' · ')}
+                {p.estado === 'abierto' && p.proximo_contacto && ` · contactar el ${fechaCorta(p.proximo_contacto)}`}
+              </small>
+            </Link>
+            {p.estado === 'abierto' && p.proximo_contacto && p.proximo_contacto <= hoy ? (
+              <span className="pill crit">{p.proximo_contacto < hoy ? 'Atrasado' : 'Hoy'}</span>
+            ) : (
+              <span className={`pill ${PILL[p.interes]}`}>Interés {p.interes}</span>
+            )}
+          </li>
+        ))}
+        {lista.length === 0 && (
+          <li>
+            <span className="muted">
+              {estado === 'abierto'
+                ? `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra con "Nuevo" a cada interesado que no cerró en la visita.`
+                : 'No hay nadie en esta lista.'}
+            </span>
+          </li>
+        )}
+      </ul>
+    </main>
+  )
+}

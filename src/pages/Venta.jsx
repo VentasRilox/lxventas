@@ -1,0 +1,212 @@
+import { useEffect, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { useSesion } from '../lib/SesionProvider.jsx'
+import { supabase } from '../lib/supabase'
+import { guardarRegistro } from '../lib/cola'
+import { traducirError } from '../lib/errores'
+import { fechaLocalHoy, horaLocalAhora } from '../lib/fecha'
+import { esValida, mayus, titulo } from '../lib/reglas'
+import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
+import Campo from '../components/Campo.jsx'
+import Chips from '../components/Chips.jsx'
+
+const CLAVE_PROGRAMA = 'lxv_programa'
+
+function recordado(clave) {
+  try {
+    return localStorage.getItem(clave) ?? ''
+  } catch {
+    return ''
+  }
+}
+
+function vacio() {
+  return {
+    programa: recordado(CLAVE_PROGRAMA), estrategia: '', nombre: '', dni: '', celular: '', correo: '', lugar: '',
+    desempeno: '', condicion: '', pago: '', suscripcion: '', beneficiario: '', observacion: '',
+    fecha: fechaLocalHoy(), hora: horaLocalAhora(),
+  }
+}
+
+export default function Venta() {
+  const { perfil, zona, cfg, plantillas } = useSesion()
+  const [parametros, setParametros] = useSearchParams()
+  const prospectoId = parametros.get('prospecto')
+  const [f, setF] = useState(vacio)
+  const [guardando, setGuardando] = useState(false)
+  const [aviso, setAviso] = useState(null)
+  const [guardada, setGuardada] = useState(null)
+
+  const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
+  const ctx = { asesor: perfil.nombre, zona: zona?.nombre ?? '', firma: cfg?.firma ?? '' }
+  const texto = textoVenta(f, ctx)
+  const dni = f.dni.replace(/\D/g, '')
+  const celular = f.celular.replace(/\D/g, '')
+  const falta = [
+    !mayus(f.programa) && 'programa',
+    !mayus(f.nombre) && 'nombre',
+    dni.length !== 8 && 'DNI de 8 dígitos',
+    celular && celular.length !== 9 && 'celular de 9 dígitos',
+  ].filter(Boolean)
+  const valida = esValida({ estado: 'registrada', condicion: f.condicion, pago: f.pago }, cfg)
+
+  // Si viene de un prospecto, sus datos ya llegan llenos.
+  useEffect(() => {
+    if (!prospectoId) return
+    let activo = true
+    supabase
+      .from('prospectos')
+      .select('nombre, celular, lugar, condicion')
+      .eq('id', prospectoId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!activo || !data) return
+        setF((antes) => ({ ...antes, nombre: data.nombre ?? '', celular: data.celular ?? '', lugar: data.lugar ?? '', condicion: titulo(data.condicion ?? '') }))
+      })
+    return () => {
+      activo = false
+    }
+  }, [prospectoId])
+
+  async function guardar() {
+    if (falta.length) return false
+    setGuardando(true)
+    setAviso(null)
+    const fila = {
+      empresa_id: perfil.empresa_id,
+      asesor_id: perfil.id,
+      zona_id: perfil.zona_id,
+      prospecto_id: prospectoId || null,
+      idem_key: `${perfil.id}|S|${f.fecha}|${dni}`,
+      fecha: f.fecha,
+      hora: f.hora,
+      nombre: mayus(f.nombre),
+      dni,
+      celular,
+      correo: f.correo.trim().toLowerCase(),
+      lugar: mayus(f.lugar),
+      desempeno: mayus(f.desempeno),
+      condicion: mayus(f.condicion),
+      pago: mayus(f.pago),
+      programa: mayus(f.programa),
+      estrategia: mayus(f.estrategia),
+      suscripcion: mayus(f.suscripcion),
+      beneficiario: mayus(f.beneficiario),
+      observacion: mayus(f.observacion),
+    }
+    const r = await guardarRegistro('ventas', fila)
+    if (!r.ok) {
+      setGuardando(false)
+      setAviso(['crit', 'No se guardó: ' + traducirError(r.error)])
+      return false
+    }
+    if (prospectoId && !r.pendiente) {
+      await supabase.from('prospectos').update({ estado: 'ganado', proximo_contacto: null }).eq('id', prospectoId)
+      window.dispatchEvent(new Event('lxv-seguimiento'))
+    }
+    try {
+      localStorage.setItem(CLAVE_PROGRAMA, f.programa)
+    } catch {
+      // No pasa nada si no se puede recordar el programa.
+    }
+    setGuardando(false)
+    setGuardada({ nombre: fila.nombre, celular })
+    setAviso(['ok', r.pendiente ? 'Sin señal: la venta quedó guardada en el celular y se subirá sola.' : 'Venta guardada.'])
+    return true
+  }
+
+  async function enviar() {
+    const ventana = window.open(enlaceWhatsApp(texto), '_blank')
+    const ok = await guardar()
+    if (!ok && ventana) ventana.close()
+  }
+
+  function otra() {
+    setF(vacio())
+    setAviso(null)
+    setGuardada(null)
+    if (prospectoId) setParametros({}, { replace: true })
+    window.scrollTo(0, 0)
+  }
+
+  const referidos = plantillaPara(plantillas, 9, null)
+  const textoReferidos = referidos && guardada
+    ? llenarPlantilla(referidos.texto, { nombre: titulo(guardada.nombre), asesor: titulo(perfil.nombre), firma: cfg?.firma, producto: titulo(f.programa) || cfg?.producto })
+    : ''
+
+  return (
+    <main className="contenido contenido--angosto">
+      <h1>Cierre de venta</h1>
+
+      <section>
+        <h2>Programa</h2>
+        <div className="grid2">
+          <Campo etiqueta="Programa de estudio (se recuerda el último)" nombre="programa" f={f} setF={setF} full autoComplete="off" />
+          <Campo etiqueta="Estrategia" nombre="estrategia" f={f} setF={setF} full />
+        </div>
+      </section>
+
+      <section>
+        <h2>{cfg?.nombre_contacto ?? 'Contacto'}</h2>
+        <div className="grid2">
+          <Campo etiqueta="Nombre completo" nombre="nombre" f={f} setF={setF} full autoComplete="off" />
+          <Campo etiqueta="DNI" nombre="dni" f={f} setF={setF} inputMode="numeric" maxLength={8} autoComplete="off" />
+          <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="numeric" maxLength={9} autoComplete="off" />
+          <Campo etiqueta="Correo electrónico" nombre="correo" f={f} setF={setF} full type="email" inputMode="email" autoComplete="off" />
+          <Campo etiqueta={lugarNombre} nombre="lugar" f={f} setF={setF} full autoComplete="off" />
+        </div>
+        <Chips opciones={['Docente', 'Director', 'Auxiliar']} valor={f.desempeno} alCambiar={(v) => setF({ ...f, desempeno: v })} />
+        <Campo etiqueta="Desempeño" nombre="desempeno" f={f} setF={setF} placeholder="Toca una opción o escribe otro" />
+        <Chips opciones={['Nombrado', 'Contratado']} valor={f.condicion} alCambiar={(v) => setF({ ...f, condicion: v })} />
+        <Campo etiqueta="Condición laboral" nombre="condicion" f={f} setF={setF} placeholder="Toca una opción o escribe otra" />
+      </section>
+
+      <section>
+        <h2>Pago</h2>
+        <Chips opciones={['Descuento por planilla', 'Pago directo']} valor={f.pago} alCambiar={(v) => setF({ ...f, pago: v })} />
+        <div className="grid2">
+          <Campo etiqueta="Modalidad de pago" nombre="pago" f={f} setF={setF} full placeholder="Toca una opción o escribe otra" />
+          <Campo etiqueta="Suscripción" nombre="suscripcion" f={f} setF={setF} full />
+          <Campo etiqueta="Beneficiario" nombre="beneficiario" f={f} setF={setF} full />
+          <Campo etiqueta="Observación" nombre="observacion" f={f} setF={setF} full area />
+          <Campo etiqueta="Fecha" nombre="fecha" f={f} setF={setF} type="date" />
+          <Campo etiqueta="Hora" nombre="hora" f={f} setF={setF} type="time" />
+        </div>
+        {(f.condicion || f.pago) && !valida && (
+          <p className="aviso">Esta venta quedará "por revisar": solo cuenta para la meta la de nombrado con descuento por planilla.</p>
+        )}
+      </section>
+
+      <section>
+        <h2>Así saldrá el mensaje</h2>
+        <pre className="mensaje">{texto}</pre>
+      </section>
+
+      {falta.length > 0 && <p className="aviso">Falta: {falta.join(', ')}.</p>}
+      {aviso && <p className={`aviso aviso--${aviso[0]}`}>{aviso[1]}</p>}
+
+      <div className="acciones">
+        <button type="button" className="btn" disabled={guardando || falta.length > 0} onClick={enviar}>
+          {guardando ? 'Guardando...' : 'Guardar y enviar por WhatsApp'}
+        </button>
+        <button type="button" className="btn btn--sec" disabled={guardando || falta.length > 0} onClick={guardar}>
+          Solo guardar
+        </button>
+      </div>
+
+      {guardada && textoReferidos && guardada.celular && (
+        <section>
+          <h2>Pide referidos ahora</h2>
+          <pre className="mensaje">{textoReferidos}</pre>
+          <a className="btn btn--sec" href={enlaceWhatsApp(textoReferidos, guardada.celular)} target="_blank" rel="noopener noreferrer">
+            Escribirle a {titulo(guardada.nombre).split(' ')[0]}
+          </a>
+        </section>
+      )}
+
+      <button type="button" className="enlace" onClick={otra}>
+        Empezar otra venta (limpia los datos)
+      </button>
+    </main>
+  )
+}
