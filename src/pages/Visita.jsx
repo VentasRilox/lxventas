@@ -169,6 +169,7 @@ export default function Visita() {
             <Campo etiqueta={`${contactoNombre}s atendidos`} nombre="contactos" f={f} setF={setF} inputMode="numeric" placeholder="0" />
             <Campo etiqueta="Ventas" nombre="ventas_declaradas" f={f} setF={setF} inputMode="numeric" placeholder="0" />
           </div>
+          <p className="small muted">"Atendidos" es con cuántos hablaste en este colegio. Luego registra a cada uno con su nombre en Registrar.</p>
           <Chips opciones={NIVELES} valor={f.niveles} multiple alCambiar={(v) => setF({ ...f, niveles: NIVELES.filter((n) => v.includes(n)) })} />
         </section>
       )}

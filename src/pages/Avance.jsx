@@ -118,9 +118,14 @@ export default function Avance() {
           <div className="kpi"><span>Ventas de hoy</span><b>{r.ventasHoy.length}</b><small>{r.ventasHoy.filter((v) => esValida(v, cfg)).length} con pago confirmado</small></div>
           <div className="kpi"><span>Visitas</span><b>{r.hoyVis.length}</b><small>{r.ingresos} con ingreso</small></div>
           <div className="kpi">
-            <span>Personas registradas</span>
-            <b>{registradas} <small style={{ fontSize: 'var(--t-sm)', fontWeight: 500 }}>de {r.contactos}</small></b>
-            <small>{registradas < r.contactos ? `Atendiste ${r.contactos} según tus visitas: te falta registrar ${r.contactos - registradas}` : 'Atendidas según tus visitas'}</small>
+            <span>Atendidos (lo que escribiste)</span>
+            <b>{r.contactos}</b>
+            <small>{r.hoyVis.filter((v) => v.contactos > 0).map((v) => `${titulo(v.lugar)}: ${v.contactos}`).join(' + ') || 'Sale del número que pones en cada visita'}</small>
+          </div>
+          <div className="kpi">
+            <span>Registrados con nombre</span>
+            <b>{registradas}</b>
+            <small>{registradas < r.contactos ? `Te falta registrar ${r.contactos - registradas} de los ${r.contactos} atendidos` : 'Todos los atendidos están registrados'}</small>
           </div>
           <div className="kpi"><span>Movilidad</span><b>{soles(r.movilidad)}</b></div>
         </div>
@@ -158,7 +163,7 @@ export default function Avance() {
 
       {r.movilidad > 2500 && <p className="aviso">Tu movilidad de hoy suma {soles(r.movilidad)}. El tope es S/ 25 por día.</p>}
       <p className="small muted">
-        "Atendidos" y "movilidad" salen de lo que escribiste en cada visita de hoy. Si un número está mal, quita esa visita y regístrala de nuevo.
+        "Atendidos" es el número que escribiste en cada visita, no una lista de personas. "Registrados con nombre" son los que guardaste en Registrar. "Movilidad" es la suma de lo que pusiste en cada visita. Si un número está mal, quita esa visita y regístrala de nuevo.
       </p>
 
       <section>

@@ -32,8 +32,8 @@ export default function Registros({ visitas, prospectos, desde, hasta, nombreDe,
       <h2>Registros del periodo</h2>
       <div className="kpis">
         <div className="kpi"><span>{lugar}s visitados</span><b>{colegios.length}</b><small>{colegios.filter((v) => v.con_ingreso).length} con ingreso</small></div>
-        <div className="kpi"><span>Atendidos según visitas</span><b>{atendidos}</b><small>Lo que declaró cada asesor</small></div>
-        <div className="kpi"><span>Personas registradas</span><b>{personas.length}</b><small>{atendidos > personas.length ? `Faltan registrar ${atendidos - personas.length}` : 'Con nombre y resultado'}</small></div>
+        <div className="kpi"><span>Atendidos (declarados)</span><b>{atendidos}</b><small>Número que el asesor escribió en sus visitas</small></div>
+        <div className="kpi"><span>Registrados con nombre</span><b>{personas.length}</b><small>{atendidos > personas.length ? `Faltan registrar ${atendidos - personas.length}` : 'Con nombre y resultado'}</small></div>
         <div className="kpi"><span>Movilidad</span><b>{soles(movilidad)}</b></div>
       </div>
 
