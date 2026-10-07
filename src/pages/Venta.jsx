@@ -4,7 +4,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
-import { fechaLocalHoy, horaLocalAhora } from '../lib/fecha'
+import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora } from '../lib/fecha'
 import { DOCUMENTOS, MEDIOS_CUOTA, cumpleCondiciones, faltaContrato, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
@@ -214,7 +214,6 @@ export default function Venta() {
         <h2>Programa</h2>
         <div className="grid2">
           <Campo etiqueta="Programa de estudio (se recuerda el último)" nombre="programa" f={f} setF={setF} full autoComplete="off" />
-          <Campo etiqueta="Estrategia" nombre="estrategia" f={f} setF={setF} full />
         </div>
       </section>
 
@@ -227,14 +226,16 @@ export default function Venta() {
           <Campo etiqueta="Correo electrónico" nombre="correo" f={f} setF={setF} full type="email" inputMode="email" autoComplete="off" />
           <Campo etiqueta={lugarNombre} nombre="lugar" f={f} setF={setF} full autoComplete="off" />
         </div>
+        <p className="etiqueta">Puesto</p>
         <Chips opciones={['Docente', 'Director', 'Auxiliar']} valor={f.desempeno} alCambiar={(v) => setF({ ...f, desempeno: v })} />
-        <Campo etiqueta="Desempeño" nombre="desempeno" f={f} setF={setF} placeholder="Toca una opción o escribe otro" />
+        {f.desempeno !== '' && !['DOCENTE', 'DIRECTOR', 'AUXILIAR'].includes(mayus(f.desempeno)) && <Campo etiqueta="Otro puesto" nombre="desempeno" f={f} setF={setF} />}
+        <p className="etiqueta">Condición laboral</p>
         <Chips opciones={['Nombrado', 'Contratado']} valor={f.condicion} alCambiar={(v) => setF({ ...f, condicion: v })} />
-        <Campo etiqueta="Condición laboral" nombre="condicion" f={f} setF={setF} placeholder="Toca una opción o escribe otra" />
+        {f.condicion !== '' && !['NOMBRADO', 'CONTRATADO'].includes(mayus(f.condicion)) && <Campo etiqueta="Otra condición" nombre="condicion" f={f} setF={setF} />}
       </section>
 
-      <section>
-        <h2>Datos para el contrato</h2>
+      <details className="plegable" open={Boolean(ventaId) || undefined}>
+        <summary>Datos para el contrato{pendienteContrato.length ? ` · faltan ${pendienteContrato.length} (se pueden completar después)` : ' · completo'}</summary>
         <div className="grid2">
           <Campo etiqueta="Dirección" nombre="direccion" f={f} setF={setF} full autoComplete="off" />
           <Campo etiqueta="Distrito" nombre="distrito" f={f} setF={setF} autoComplete="off" />
@@ -245,24 +246,38 @@ export default function Venta() {
           <Campo etiqueta="Código CUSPP" nombre="cuspp" f={f} setF={setF} autoComplete="off" />
           <Campo etiqueta="Profesión u ocupación" nombre="profesion" f={f} setF={setF} full autoComplete="off" />
         </div>
-        <h2>Documentos firmados y entregados</h2>
+        <p className="etiqueta">Documentos firmados y entregados</p>
         <Chips opciones={DOCUMENTOS.map((d) => d[1])} valor={f.documentos} multiple alCambiar={(v) => setF({ ...f, documentos: v })} />
         {pendienteContrato.length > 0 && (
-          <p className="aviso">Para el contrato todavía falta: {pendienteContrato.join(', ')}. Puedes guardar la venta ahora y completarlo después en "Mi avance".</p>
+          <p className="small muted">Falta: {pendienteContrato.join(', ')}. Puedes guardar la venta ahora y completarlo después en "Mi avance".</p>
         )}
-      </section>
+      </details>
 
       <section>
         <h2>Pago</h2>
+        <p className="etiqueta">Modalidad de pago</p>
         <Chips opciones={['Descuento por planilla', 'Pago directo']} valor={f.pago} alCambiar={(v) => setF({ ...f, pago: v })} />
         <div className="grid2">
-          <Campo etiqueta="Modalidad de pago" nombre="pago" f={f} setF={setF} full placeholder="Toca una opción o escribe otra" />
-          <Campo etiqueta="Suscripción" nombre="suscripcion" f={f} setF={setF} full />
-          <Campo etiqueta="Beneficiario" nombre="beneficiario" f={f} setF={setF} full />
-          <Campo etiqueta="Observación" nombre="observacion" f={f} setF={setF} full area />
-          <Campo etiqueta="Fecha" nombre="fecha" f={f} setF={setF} type="date" />
-          <Campo etiqueta="Hora" nombre="hora" f={f} setF={setF} type="time" />
+          {f.pago !== '' && !['DESCUENTO POR PLANILLA', 'PAGO DIRECTO'].includes(mayus(f.pago)) && <Campo etiqueta="Otra modalidad" nombre="pago" f={f} setF={setF} full />}
         </div>
+        <details className="plegable">
+          <summary>Más datos: estrategia, suscripción, beneficiario y observación</summary>
+          <div className="grid2">
+            <Campo etiqueta="Estrategia" nombre="estrategia" f={f} setF={setF} full />
+            <Campo etiqueta="Suscripción" nombre="suscripcion" f={f} setF={setF} full />
+            <Campo etiqueta="Beneficiario" nombre="beneficiario" f={f} setF={setF} full />
+            <Campo etiqueta="Observación" nombre="observacion" f={f} setF={setF} full area />
+          </div>
+        </details>
+        {!ventaId && (
+          <details className="plegable">
+            <summary>Fecha y hora: {fechaCorta(f.fecha)} · {horaCorta(f.hora)} (cambiar)</summary>
+            <div className="grid2">
+              <Campo etiqueta="Fecha" nombre="fecha" f={f} setF={setF} type="date" />
+              <Campo etiqueta="Hora" nombre="hora" f={f} setF={setF} type="time" />
+            </div>
+          </details>
+        )}
         {(f.condicion || f.pago) && !cumple && (
           <p className="aviso">Esta venta quedará "por revisar": solo cuenta para la meta la de nombrado con descuento por planilla.</p>
         )}
@@ -286,10 +301,10 @@ export default function Venta() {
       )}
 
       {!ventaId && (
-      <section>
-        <h2>Así saldrá el mensaje</h2>
-        <pre className="mensaje">{texto}</pre>
-      </section>
+        <details className="plegable">
+          <summary>Ver el mensaje que se enviará</summary>
+          <pre className="mensaje">{texto}</pre>
+        </details>
       )}
 
       {falta.length > 0 && <p className="aviso">Falta: {falta.join(', ')}.</p>}
@@ -302,9 +317,9 @@ export default function Venta() {
           </button>
         </div>
       ) : (
-      <div className="acciones">
+      <div className="acciones acciones--fijas">
         <button type="button" className="btn" disabled={guardando || falta.length > 0} onClick={enviar}>
-          {guardando ? 'Guardando...' : 'Guardar y enviar por WhatsApp'}
+          {guardando ? 'Guardando...' : 'Guardar y enviar'}
         </button>
         <button type="button" className="btn btn--sec" disabled={guardando || falta.length > 0} onClick={guardar}>
           Solo guardar
@@ -323,7 +338,7 @@ export default function Venta() {
       )}
 
       <button type="button" className="enlace" onClick={otra}>
-        Empezar otra venta (limpia los datos)
+        Empezar otra venta
       </button>
     </main>
   )

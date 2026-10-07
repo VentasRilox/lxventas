@@ -3,7 +3,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
-import { fechaLocalHoy, horaLocalAhora } from '../lib/fecha'
+import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora } from '../lib/fecha'
 import { mayus, visitaConIngreso } from '../lib/reglas'
 import { enlaceWhatsApp, textoVisita } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
@@ -26,6 +26,7 @@ export default function Visita() {
   const [lugares, setLugares] = useState({})
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState(null)
+  const [verDatos, setVerDatos] = useState(null)
 
   const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
   const contactoNombre = cfg?.nombre_contacto ?? 'Contacto'
@@ -116,72 +117,91 @@ export default function Visita() {
   function otra() {
     setF(vacio((parseInt(f.numero, 10) || 0) + 1))
     setAviso(null)
+    setVerDatos(null)
     window.scrollTo(0, 0)
   }
+
+  const conocido = Boolean(lugares[mayus(f.lugar)])
+  const mostrarDatos = verDatos ?? false
 
   return (
     <main className="contenido contenido--angosto">
       <h1>Reporte de visita</h1>
 
       <section>
-        <h2>Resultado</h2>
+        <h2>1. ¿Cómo te fue?</h2>
         <Chips opciones={RESULTADOS} valor={f.resultado} alCambiar={(v) => setF({ ...f, resultado: v })} />
-        <Campo etiqueta="Resultado de la visita" nombre="resultado" f={f} setF={setF} placeholder="Toca una opción o escribe el tuyo" />
       </section>
 
       <section>
-        <h2>{lugarNombre}</h2>
-        <div className="grid2">
-          <label className="full" htmlFor="c_lugar">
-            {lugarNombre} (los ya visitados se completan solos)
-            <input id="c_lugar" list="lugares" autoComplete="off" value={f.lugar} onChange={(e) => alCambiarLugar(e.target.value)} />
-            <datalist id="lugares">
-              {Object.keys(lugares).map((l) => (
-                <option key={l} value={l} />
-              ))}
-            </datalist>
-          </label>
-          <Campo etiqueta="N° de visita" nombre="numero" f={f} setF={setF} inputMode="numeric" />
-          <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="tel" />
-          <Campo etiqueta="Director(a)" nombre="director" f={f} setF={setF} full />
-          <Campo etiqueta="Dirección" nombre="direccion" f={f} setF={setF} full />
-          <Campo etiqueta="Referencia" nombre="referencia" f={f} setF={setF} full />
-        </div>
-        <Chips opciones={NIVELES} valor={f.niveles} multiple disabled={sin} alCambiar={(v) => setF({ ...f, niveles: NIVELES.filter((n) => v.includes(n)) })} />
+        <h2>2. {lugarNombre}</h2>
+        <label htmlFor="c_lugar">
+          Nombre del {lugarNombre.toLowerCase()}
+          <input id="c_lugar" list="lugares" autoComplete="off" placeholder="Escribe o elige uno ya visitado" value={f.lugar} onChange={(e) => alCambiarLugar(e.target.value)} onBlur={() => { if (verDatos === null && mayus(f.lugar) !== '' && !conocido) setVerDatos(true) }} />
+          <datalist id="lugares">
+            {Object.keys(lugares).map((l) => (
+              <option key={l} value={l} />
+            ))}
+          </datalist>
+        </label>
+        {conocido && <p className="small muted">Ya lo visitaste: sus datos se llenaron solos.</p>}
+        <details className="plegable" open={mostrarDatos} onToggle={(e) => setVerDatos(e.currentTarget.open)}>
+          <summary>Datos del {lugarNombre.toLowerCase()}: director, celular y dirección</summary>
+          <div className="grid2">
+            <Campo etiqueta="Director(a)" nombre="director" f={f} setF={setF} full />
+            <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="tel" />
+            <Campo etiqueta="N° de visita" nombre="numero" f={f} setF={setF} inputMode="numeric" />
+            <Campo etiqueta="Dirección" nombre="direccion" f={f} setF={setF} full />
+            <Campo etiqueta="Referencia" nombre="referencia" f={f} setF={setF} full />
+          </div>
+          <p className="small muted">Se llenan una sola vez: la próxima visita ya vienen puestos.</p>
+        </details>
       </section>
 
+      {!sin && (
+        <section>
+          <h2>3. Números de la visita</h2>
+          <div className="grid2">
+            <Campo etiqueta={`${contactoNombre}s atendidos`} nombre="contactos" f={f} setF={setF} inputMode="numeric" placeholder="0" />
+            <Campo etiqueta="Ventas" nombre="ventas_declaradas" f={f} setF={setF} inputMode="numeric" placeholder="0" />
+          </div>
+          <Chips opciones={NIVELES} valor={f.niveles} multiple alCambiar={(v) => setF({ ...f, niveles: NIVELES.filter((n) => v.includes(n)) })} />
+        </section>
+      )}
+
       <section>
-        <h2>Números de la visita</h2>
-        {sin && <p className="aviso">Sin ingreso: {contactoNombre.toLowerCase()}s, venta, niveles y PSI quedan en cero.</p>}
+        <h2>{sin ? '3' : '4'}. Movilidad y observación</h2>
         <div className="grid2">
-          <Campo etiqueta={`Total de ${contactoNombre.toLowerCase()}s`} nombre="contactos" f={f} setF={setF} inputMode="numeric" placeholder="0" disabled={sin} />
-          <Campo etiqueta="Venta" nombre="ventas_declaradas" f={f} setF={setF} inputMode="numeric" placeholder="0" disabled={sin} />
           <Campo etiqueta="Movilidad (S/)" nombre="movilidad" f={f} setF={setF} inputMode="decimal" placeholder="0" />
-          <Campo etiqueta="PSI" nombre="psi" f={f} setF={setF} disabled={sin} />
-          <Campo etiqueta="Observación" nombre="observacion" f={f} setF={setF} full area />
-          <Campo etiqueta="Fecha" nombre="fecha" f={f} setF={setF} type="date" />
-          <Campo etiqueta="Hora" nombre="hora" f={f} setF={setF} type="time" />
+          {!sin && <Campo etiqueta="PSI" nombre="psi" f={f} setF={setF} />}
+          <Campo etiqueta={sin ? 'Observación: ¿por qué no hubo ingreso?' : 'Observación (opcional)'} nombre="observacion" f={f} setF={setF} full area />
         </div>
-      </section>
-
-      <section>
-        <h2>Así saldrá el mensaje</h2>
-        <pre className="mensaje">{texto}</pre>
+        <details className="plegable">
+          <summary>Fecha y hora: {fechaCorta(f.fecha)} · {horaCorta(f.hora)} (cambiar)</summary>
+          <div className="grid2">
+            <Campo etiqueta="Fecha" nombre="fecha" f={f} setF={setF} type="date" />
+            <Campo etiqueta="Hora" nombre="hora" f={f} setF={setF} type="time" />
+          </div>
+        </details>
+        <details className="plegable">
+          <summary>Ver el mensaje que se enviará</summary>
+          <pre className="mensaje">{texto}</pre>
+        </details>
       </section>
 
       {falta.length > 0 && <p className="aviso">Falta: {falta.join(', ')}.</p>}
       {aviso && <p className={`aviso aviso--${aviso[0]}`}>{aviso[1]}</p>}
 
-      <div className="acciones">
+      <div className="acciones acciones--fijas">
         <button type="button" className="btn" disabled={guardando || falta.length > 0} onClick={enviar}>
-          {guardando ? 'Guardando...' : 'Guardar y enviar por WhatsApp'}
+          {guardando ? 'Guardando...' : 'Guardar y enviar'}
         </button>
         <button type="button" className="btn btn--sec" disabled={guardando || falta.length > 0} onClick={guardar}>
           Solo guardar
         </button>
       </div>
       <button type="button" className="enlace" onClick={otra}>
-        Empezar otra visita (limpia los datos y sube el N°)
+        Empezar otra visita
       </button>
     </main>
   )

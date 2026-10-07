@@ -162,6 +162,19 @@ tr.total td { font-weight: 700; background: var(--bg); }
 .tab[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .estado { min-height: 60dvh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); }
 
+/* ---------- Formularios ágiles ---------- */
+/* Fecha y hora: en iPhone se salían de su columna. */
+input[type='date'], input[type='time'] { -webkit-appearance: none; appearance: none; min-width: 0; max-width: 100%; text-align: left; }
+input[type='date']::-webkit-date-and-time-value, input[type='time']::-webkit-date-and-time-value { text-align: left; }
+.etiqueta { font-size: var(--t-sm); font-weight: 500; color: var(--muted); margin-bottom: -6px; }
+.plegable { border: 1.5px solid var(--line); border-radius: 10px; background: var(--surface); }
+.plegable > summary { cursor: pointer; padding: 12px 14px; font-size: var(--t-sm); font-weight: 500; color: var(--accent); min-height: 44px; }
+.plegable[open] > summary { border-bottom: 1px solid var(--line); }
+.plegable > :not(summary) { margin: 12px 14px; }
+.plegable > pre.mensaje { border: 0; padding: 0; }
+/* Botones de guardar siempre a la vista, encima de la barra de abajo. */
+.acciones--fijas { position: sticky; bottom: calc(var(--nav) + env(safe-area-inset-bottom, 0px) + 8px); background: var(--bg); padding: 8px 0; margin: -8px 0; z-index: 2; }
+
 /* ---------- Periodo del panel ---------- */
 .periodo { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; }
 .periodo > div { flex: 1; text-align: center; min-width: 0; }
