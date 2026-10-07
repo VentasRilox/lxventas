@@ -18,7 +18,11 @@ export function titulo(texto) {
     .toLowerCase()
     .trim()
     .split(/\s+/)
-    .map((palabra, i) => (i > 0 && ENLACES.has(palabra) ? palabra : palabra.charAt(0).toUpperCase() + palabra.slice(1)))
+    .map((palabra, i) => {
+      // Siglas con puntos, como I.E. o I.E.P., van en mayúscula.
+      if (/^([a-zñ]\.){2,}$/.test(palabra)) return palabra.toUpperCase()
+      return i > 0 && ENLACES.has(palabra) ? palabra : palabra.charAt(0).toUpperCase() + palabra.slice(1)
+    })
     .join(' ')
 }
 
