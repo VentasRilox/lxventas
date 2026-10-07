@@ -7,17 +7,17 @@ import { fechaLocalHoy } from '../lib/fecha'
 
 const ROLES = { asesor: 'Asesor', supervisor: 'Supervisor', jefe: 'Jefe de ventas', gerencia: 'Gerencia' }
 
-// "Docente" registra a una persona (y de ahí sigue a la venta si compró);
+// "Registrar" anota a una persona (y de ahí sigue a la venta si compró);
 // "Cartera" es la lista de quienes quedaron en seguimiento.
-function enlaces(rol, contacto) {
-  if (rol === 'asesor') return [['/hoy', 'Hoy'], ['/visita', 'Visita'], ['/docente', contacto], ['/seguimiento', 'Cartera'], ['/avance', 'Mi avance']]
-  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/visita', 'Visita'], ['/docente', contacto], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo']]
-  if (rol === 'jefe') return [['/panel', 'Panel'], ['/docente', contacto], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo'], ['/ajustes', 'Ajustes']]
+function enlaces(rol) {
+  if (rol === 'asesor') return [['/hoy', 'Hoy'], ['/visita', 'Visita'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/avance', 'Mi avance']]
+  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/visita', 'Visita'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo']]
+  if (rol === 'jefe') return [['/panel', 'Panel'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo'], ['/ajustes', 'Ajustes']]
   return [['/panel', 'Panel']]
 }
 
 export default function Layout() {
-  const { rol, nombre, empresaNombre, perfil, cfg } = useSesion()
+  const { rol, nombre, empresaNombre, perfil } = useSesion()
   const [porSubir, setPorSubir] = useState(pendientes())
   const [porContactar, setPorContactar] = useState(0)
   const [confirmando, setConfirmando] = useState(false)
@@ -48,7 +48,6 @@ export default function Layout() {
     }
   }, [rol, perfil.id])
 
-  const contacto = cfg?.nombre_contacto ?? 'Contacto'
 
   return (
     <div className="layout">
@@ -83,7 +82,7 @@ export default function Layout() {
 
       <nav className="nav">
         <div className="nav__in">
-          {enlaces(rol, contacto).map(([ruta, texto]) => (
+          {enlaces(rol).map(([ruta, texto]) => (
             <NavLink key={ruta} to={ruta} className={({ isActive }) => (isActive ? 'activo' : undefined)}>
               {texto}
               {ruta === '/hoy' && porContactar > 0 && <span className="globo">{porContactar}</span>}

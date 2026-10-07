@@ -45,7 +45,7 @@ export default function Hoy() {
               <Link className="item" to={`/seguimiento/${p.id}`}>
                 {titulo(p.nombre)}
                 <small>
-                  {[p.lugar, titulo(p.condicion), `interés ${p.interes}`, `contacto ${p.paso} de 4`].filter(Boolean).join(' · ')}
+                  {[p.puesto && p.puesto !== 'DOCENTE' && titulo(p.puesto), p.lugar, titulo(p.condicion), `interés ${p.interes}`, `contacto ${p.paso} de 4`].filter(Boolean).join(' · ')}
                 </small>
               </Link>
               <span className={`pill ${atraso > 0 ? 'crit' : 'warn'}`}>{atraso > 0 ? `${atraso} d de atraso` : 'Hoy'}</span>
@@ -60,7 +60,7 @@ export default function Hoy() {
       </ul>
 
       <Link to="/docente" className="btn">
-        Registrar un {contacto}
+        Registrar a una persona
       </Link>
 
       {proximos.length > 0 && (

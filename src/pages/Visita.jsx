@@ -198,7 +198,7 @@ export default function Visita() {
 
       {guardado && (
         <Link className="btn" to={`/docente?lugar=${encodeURIComponent(guardado)}`}>
-          Ahora registra a los {contactoNombre.toLowerCase()}s de este {lugarNombre.toLowerCase()}
+          Ahora registra a las personas de este {lugarNombre.toLowerCase()}
         </Link>
       )}
 

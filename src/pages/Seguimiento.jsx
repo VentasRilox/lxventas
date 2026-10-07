@@ -34,7 +34,7 @@ export default function Seguimiento() {
   return (
     <main className="contenido contenido--angosto">
       <div className="fila">
-        <h1>Cartera de {contacto.toLowerCase()}s</h1>
+        <h1>Cartera</h1>
         <Link to="/docente" className="btn btn--chico">
           Registrar
         </Link>
@@ -59,7 +59,7 @@ export default function Seguimiento() {
             <Link className="item" to={`/seguimiento/${p.id}`}>
               {titulo(p.nombre)}
               <small>
-                {[p.lugar, titulo(p.condicion), rol !== 'asesor' && p.asesor_id !== perfil.id && 'de otro asesor'].filter(Boolean).join(' · ')}
+                {[p.puesto && p.puesto !== 'DOCENTE' && titulo(p.puesto), p.lugar, titulo(p.condicion), rol !== 'asesor' && p.asesor_id !== perfil.id && 'de otro asesor'].filter(Boolean).join(' · ')}
                 {p.estado === 'abierto' && p.proximo_contacto && ` · llamar el ${fechaCorta(p.proximo_contacto)}`}
               </small>
             </Link>

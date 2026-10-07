@@ -38,7 +38,7 @@ export default function Venta() {
   const [original, setOriginal] = useState(null)
   const llegada = useLocation().state?.datos
   // Si viene de registrar a la persona, sus datos ya llegan puestos.
-  const [f, setF] = useState(() => (llegada ? { ...vacio(), nombre: llegada.nombre ?? '', celular: llegada.celular ?? '', lugar: llegada.lugar ?? '', condicion: llegada.condicion ?? '' } : vacio()))
+  const [f, setF] = useState(() => (llegada ? { ...vacio(), nombre: llegada.nombre ?? '', celular: llegada.celular ?? '', lugar: llegada.lugar ?? '', condicion: llegada.condicion ?? '', desempeno: llegada.desempeno ?? '' } : vacio()))
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState(null)
   const [guardada, setGuardada] = useState(null)
@@ -68,12 +68,12 @@ export default function Venta() {
     let activo = true
     supabase
       .from('prospectos')
-      .select('nombre, celular, lugar, condicion')
+      .select('nombre, celular, lugar, condicion, puesto')
       .eq('id', prospectoId)
       .maybeSingle()
       .then(({ data }) => {
         if (!activo || !data) return
-        setF((antes) => ({ ...antes, nombre: data.nombre ?? '', celular: data.celular ?? '', lugar: data.lugar ?? '', condicion: titulo(data.condicion ?? '') }))
+        setF((antes) => ({ ...antes, nombre: data.nombre ?? '', celular: data.celular ?? '', lugar: data.lugar ?? '', condicion: titulo(data.condicion ?? ''), desempeno: titulo(data.puesto ?? '') || antes.desempeno }))
       })
     return () => {
       activo = false

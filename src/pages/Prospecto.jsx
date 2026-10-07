@@ -133,7 +133,7 @@ export default function Prospecto() {
       <div>
         <h1>{titulo(p.nombre)}</h1>
         <p className="muted">
-          {[p.lugar, titulo(p.condicion), p.celular].filter(Boolean).join(' · ')}
+          {[titulo(p.puesto), p.lugar, titulo(p.condicion), p.celular].filter(Boolean).join(' · ')}
           {p.referido_por && ` · referido por ${titulo(p.referido_por)}`}
         </p>
       </div>

@@ -13,6 +13,7 @@ import Chips from '../components/Chips.jsx'
 // Según lo que pasó, sigue a la venta, queda en cartera con fecha para
 // volver a llamar, o se anota que no le interesa.
 const CLAVE_LUGAR = 'lxv_lugar'
+const PUESTOS = ['Docente', 'Director', 'Auxiliar']
 const RESULTADOS = [['compro', 'Compró'], ['interesado', 'Quedó interesado'], ['no', 'No le interesa']]
 const MOTIVOS_NO = [...MOTIVOS, ['NO_CALIFICA', 'No califica']]
 
@@ -25,7 +26,7 @@ function lugarRecordado() {
 }
 
 function vacio(lugar) {
-  return { nombre: '', celular: '', lugar, condicion: '', resultado: '', interes: 'medio', motivo: '', comentario: '', referido_por: '', volver: '' }
+  return { nombre: '', celular: '', lugar, puesto: 'Docente', condicion: '', resultado: '', interes: 'medio', motivo: '', comentario: '', referido_por: '', volver: '' }
 }
 
 export default function NuevoProspecto() {
@@ -38,7 +39,6 @@ export default function NuevoProspecto() {
   const [hecho, setHecho] = useState(null)
 
   const hoy = fechaLocalHoy()
-  const contacto = cfg?.nombre_contacto ?? 'Contacto'
   const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
   const celular = f.celular.replace(/\D/g, '')
   // La fecha para volver a llamar se propone según el interés; el asesor la cambia si quiere.
@@ -74,6 +74,7 @@ export default function NuevoProspecto() {
       nombre: mayus(f.nombre),
       celular,
       lugar: mayus(f.lugar),
+      puesto: mayus(f.puesto),
       condicion: mayus(f.condicion),
       interes: f.resultado === 'compro' ? 'alto' : f.resultado === 'no' ? 'bajo' : f.interes,
       motivo: interesado ? f.motivo || null : null,
@@ -98,7 +99,7 @@ export default function NuevoProspecto() {
       }
       setGuardando(false)
       window.dispatchEvent(new Event('lxv-seguimiento'))
-      navigate(id ? `/venta?prospecto=${id}` : '/venta', { state: { datos: { nombre: f.nombre, celular, lugar: f.lugar, condicion: f.condicion } } })
+      navigate(id ? `/venta?prospecto=${id}` : '/venta', { state: { datos: { nombre: f.nombre, celular, lugar: f.lugar, condicion: f.condicion, desempeno: f.puesto } } })
       return
     }
 
@@ -116,7 +117,7 @@ export default function NuevoProspecto() {
 
   return (
     <main className="contenido contenido--angosto">
-      <h1>Registrar {contacto.toLowerCase()}</h1>
+      <h1>¿Con quién hablaste?</h1>
 
       {hecho && (
         <div className="aviso aviso--ok seccion">
@@ -139,6 +140,9 @@ export default function NuevoProspecto() {
           <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="numeric" maxLength={9} autoComplete="off" />
           <Campo etiqueta={`${lugarNombre} (se recuerda)`} nombre="lugar" f={f} setF={setF} autoComplete="off" />
         </div>
+        <p className="etiqueta">Puesto</p>
+        <Chips opciones={PUESTOS} valor={f.puesto} alCambiar={(v) => setF({ ...f, puesto: v || 'Docente' })} />
+        <p className="etiqueta">Condición laboral</p>
         <Chips opciones={['Nombrado', 'Contratado']} valor={f.condicion} alCambiar={(v) => setF({ ...f, condicion: v })} />
       </section>
 
