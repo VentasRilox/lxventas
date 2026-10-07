@@ -106,6 +106,20 @@ export default function Equipo() {
     cargar()
   }
 
+  // Al cambiar de rol se limpia lo que ya no corresponde: quien deja de ser
+  // asesor pierde su zona, y quien deja de ser supervisor suelta las suyas.
+  async function cambiarRol(p, rol) {
+    if (p.rol === 'supervisor' && rol !== 'supervisor') {
+      const { error } = await supabase.from('zonas').update({ supervisor_id: null }).eq('supervisor_id', p.id)
+      if (error) {
+        setAviso(['crit', traducirError(error)])
+        return
+      }
+      recargarEmpresa()
+    }
+    await editarPerfil(p, rol === 'asesor' ? { rol } : { rol, zona_id: null })
+  }
+
   async function editarZona(z, cambios) {
     const { error } = await supabase.from('zonas').update(cambios).eq('id', z.id)
     if (error) setAviso(['crit', traducirError(error)])
@@ -245,6 +259,14 @@ export default function Equipo() {
                 {p.rol === 'supervisor' && ` · ${nz}: ${zonas.filter((z) => z.supervisor_id === p.id).map((z) => titulo(z.nombre)).join(', ') || 'asígnala arriba'}`}
                 {p.rol === 'asesor' && !esJefe && ` · ${nz} ${titulo(zonas.find((z) => z.id === p.zona_id)?.nombre ?? '')} · meta ${p.meta_mensual}`}
               </p>
+              {esJefe && p.id !== perfil.id && (
+                <label htmlFor={'rol_' + p.id}>
+                  Rol
+                  <select id={'rol_' + p.id} value={p.rol} onChange={(e) => cambiarRol(p, e.target.value)}>
+                    {ROLES.map(([v, t]) => <option key={v} value={v}>{t}</option>)}
+                  </select>
+                </label>
+              )}
               {esJefe && p.rol !== 'gerencia' && (
                 <label htmlFor={'tel_' + p.id}>
                   Celular (para escribirle por WhatsApp)
@@ -308,7 +330,7 @@ export default function Equipo() {
         <form className="grid2" onSubmit={crear}>
           <Campo etiqueta="Nombre completo" nombre="nombre" f={nuevo} setF={setNuevo} full required autoComplete="off" onBlur={() => setNuevo((antes) => (antes.usuario ? antes : { ...antes, usuario: usuarioSugerido(antes.nombre) }))} />
           <label htmlFor="c_usuario">
-            Usuario para entrar (sin espacios)
+            Usuario (sin espacios)
             <input id="c_usuario" value={nuevo.usuario} onChange={(e) => setNuevo({ ...nuevo, usuario: e.target.value })} required autoCapitalize="none" autoComplete="off" pattern="[A-Za-z0-9._@\-]+" placeholder="ej.: oaguilar" />
             {nuevo.usuario.trim() && <small className="muted">Entrará con: <b>{correoDe(nuevo.usuario)}</b></small>}
           </label>
@@ -330,7 +352,7 @@ export default function Equipo() {
               <Campo etiqueta="Meta mensual de ventas" nombre="meta_mensual" f={nuevo} setF={setNuevo} inputMode="numeric" />
             </>
           )}
-          <Campo etiqueta="Celular (opcional)" nombre="telefono" f={nuevo} setF={setNuevo} inputMode="numeric" />
+          <Campo etiqueta="Celular" nombre="telefono" f={nuevo} setF={setNuevo} full inputMode="numeric" maxLength={9} placeholder="9 dígitos, para WhatsApp" />
           <Campo etiqueta="Contraseña (mínimo 6 caracteres)" nombre="contrasena" f={nuevo} setF={setNuevo} full autoCapitalize="none" autoComplete="off" minLength={6} placeholder="Déjala vacía y el sistema crea una" />
           <button type="submit" className="btn full" disabled={ocupado}>{ocupado ? 'Creando...' : 'Crear acceso'}</button>
         </form>
