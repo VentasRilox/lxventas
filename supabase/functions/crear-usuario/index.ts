@@ -8,7 +8,8 @@
 // Seguridad: se identifica a quien llama con su propio token.
 //   * jefe activo: crea cualquier rol dentro de su empresa.
 //   * supervisor activo: solo crea asesores, y solo en las zonas que supervisa.
-// La contraseña temporal se genera aquí y se devuelve una sola vez.
+// La contraseña la escribe quien crea el acceso; si no escribe ninguna, se
+// genera aquí. En ambos casos se devuelve una sola vez.
 // ============================================================================
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
@@ -73,7 +74,11 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}))
-    const contrasena = generarContrasena()
+    // Contraseña escrita por quien llama, o una generada si la deja vacía.
+    const pedida = String(body.contrasena ?? '').trim()
+    if (pedida && pedida.length < 6) return json({ error: 'La contraseña debe tener al menos 6 caracteres.' }, 400)
+    if (pedida.length > 72) return json({ error: 'La contraseña es demasiado larga.' }, 400)
+    const contrasena = pedida || generarContrasena()
 
     // ---- Nueva contraseña para alguien de la misma empresa ----
     if (body.accion === 'clave') {

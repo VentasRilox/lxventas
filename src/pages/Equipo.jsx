@@ -32,7 +32,9 @@ export default function Equipo() {
   const [motivos, setMotivos] = useState({})
   const [pidiendo, setPidiendo] = useState(null)
   const [perfiles, setPerfiles] = useState(null)
-  const [nuevo, setNuevo] = useState({ nombre: '', usuario: '', rol: 'asesor', zona_id: '', meta_mensual: '20', telefono: '' })
+  const [nuevo, setNuevo] = useState({ nombre: '', usuario: '', rol: 'asesor', zona_id: '', meta_mensual: '20', telefono: '', contrasena: '' })
+  const [cambiando, setCambiando] = useState(null)
+  const [claveNueva, setClaveNueva] = useState('')
   const [zonaNueva, setZonaNueva] = useState({ nombre: '', meta_mensual: '60' })
   const [aviso, setAviso] = useState(null)
   const [clave, setClave] = useState(null)
@@ -70,24 +72,32 @@ export default function Equipo() {
       zona_id: nuevo.rol === 'asesor' ? nuevo.zona_id || null : null,
       meta_mensual: nuevo.rol === 'asesor' ? parseInt(nuevo.meta_mensual, 10) || 0 : 0,
       telefono: nuevo.telefono.trim(),
+      contrasena: nuevo.contrasena.trim(),
     })
     setOcupado(false)
     if (r.error) {
       setAviso(['crit', r.error])
       return
     }
-    setClave({ usuario: correoDe(nuevo.usuario), contrasena: r.data.contrasena_temporal, nombre: mayus(nuevo.nombre) })
-    setNuevo({ ...nuevo, nombre: '', usuario: '', telefono: '' })
+    setClave({ usuario: correoDe(nuevo.usuario), contrasena: r.data.contrasena_temporal, nombre: mayus(nuevo.nombre), distinta: Boolean(nuevo.contrasena.trim()) && r.data.contrasena_temporal !== nuevo.contrasena.trim() })
+    setNuevo({ ...nuevo, nombre: '', usuario: '', telefono: '', contrasena: '' })
     cargar()
   }
 
   async function nuevaClave(p) {
     setOcupado(true)
     setAviso(null)
-    const r = await llamarFuncion({ accion: 'clave', perfil_id: p.id })
+    const escrita = claveNueva.trim()
+    const r = await llamarFuncion({ accion: 'clave', perfil_id: p.id, contrasena: escrita })
     setOcupado(false)
-    if (r.error) setAviso(['crit', r.error])
-    else setClave({ usuario: p.usuario, contrasena: r.data.contrasena_temporal, nombre: p.nombre })
+    if (r.error) {
+      setAviso(['crit', r.error])
+      return
+    }
+    setClave({ usuario: p.usuario, contrasena: r.data.contrasena_temporal, nombre: p.nombre, distinta: Boolean(escrita) && r.data.contrasena_temporal !== escrita })
+    setCambiando(null)
+    setClaveNueva('')
+    window.scrollTo(0, 0)
   }
 
   async function editarPerfil(p, cambios) {
@@ -143,6 +153,7 @@ export default function Equipo() {
         <div className="aviso aviso--ok">
           <p>Acceso de {titulo(clave.nombre)}. Anótalo ahora: la contraseña no se vuelve a mostrar.</p>
           <p>Usuario: <b>{clave.usuario.replace('@' + DOMINIO_USUARIOS, '')}</b> · Contraseña: <b>{clave.contrasena}</b></p>
+          {clave.distinta && <p>Ojo: no se usó la contraseña que escribiste, sino esta que generó el sistema. Falta actualizar la función "crear-usuario" en Supabase.</p>}
         </div>
       )}
 
@@ -257,7 +268,7 @@ export default function Equipo() {
               )}
               {p.id !== perfil.id && (
                 <div className="acciones">
-                  <button type="button" className="btn btn--sec btn--chico" disabled={ocupado} onClick={() => nuevaClave(p)}>Nueva contraseña</button>
+                  <button type="button" className="btn btn--sec btn--chico" disabled={ocupado} onClick={() => { setCambiando(cambiando === p.id ? null : p.id); setClaveNueva('') }}>Cambiar contraseña</button>
                   {esJefe && (
                     <button type="button" className="btn btn--sec btn--chico" onClick={() => editarPerfil(p, { activo: !p.activo })}>{p.activo ? 'Desactivar' : 'Activar'}</button>
                   )}
@@ -267,6 +278,17 @@ export default function Equipo() {
                   {!esJefe && p.baja_solicitada_en && (
                     <button type="button" className="btn btn--sec btn--chico" onClick={() => cancelarBaja(p)}>Cancelar la baja</button>
                   )}
+                </div>
+              )}
+              {cambiando === p.id && (
+                <div className="seccion">
+                  <label htmlFor={'clave_' + p.id}>
+                    Contraseña nueva (mínimo 6 caracteres)
+                    <input id={'clave_' + p.id} value={claveNueva} onChange={(e) => setClaveNueva(e.target.value)} autoCapitalize="none" autoComplete="off" placeholder="Déjala vacía y el sistema crea una" />
+                  </label>
+                  <button type="button" className="btn btn--chico" disabled={ocupado || (claveNueva.trim().length > 0 && claveNueva.trim().length < 6)} onClick={() => nuevaClave(p)}>
+                    {ocupado ? 'Guardando…' : 'Guardar contraseña'}
+                  </button>
                 </div>
               )}
               {pidiendo === p.id && (
@@ -309,10 +331,11 @@ export default function Equipo() {
             </>
           )}
           <Campo etiqueta="Celular (opcional)" nombre="telefono" f={nuevo} setF={setNuevo} inputMode="numeric" />
+          <Campo etiqueta="Contraseña (mínimo 6 caracteres)" nombre="contrasena" f={nuevo} setF={setNuevo} full autoCapitalize="none" autoComplete="off" minLength={6} placeholder="Déjala vacía y el sistema crea una" />
           <button type="submit" className="btn full" disabled={ocupado}>{ocupado ? 'Creando...' : 'Crear acceso'}</button>
         </form>
         <p className="small muted">
-          Al crear el acceso verás su contraseña una sola vez.{esJefe ? ` El supervisor se asigna a su ${nz} en la tabla de arriba.` : ''}
+          Al crear el acceso verás su contraseña una sola vez: anótala.{esJefe ? ` El supervisor se asigna a su ${nz} en la tabla de arriba.` : ''}
         </p>
       </section>
     </main>
