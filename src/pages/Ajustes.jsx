@@ -16,7 +16,7 @@ export default function Ajustes() {
 
   useEffect(() => {
     if (cfg && !f) {
-      setF({ ...cfg, valor_venta: String((cfg.valor_venta_centimos ?? 0) / 100), dia_corte_planilla: cfg.dia_corte_planilla ?? '' })
+      setF({ ...cfg, valor_venta: String((cfg.valor_venta_centimos ?? 0) / 100), primera_cuota: String((cfg.primera_cuota_centimos ?? 13000) / 100), dia_corte_planilla: cfg.dia_corte_planilla ?? '' })
     }
   }, [cfg, f])
 
@@ -51,6 +51,9 @@ export default function Ajustes() {
         dias_interes_bajo: entero(f.dias_interes_bajo, 15),
         dias_escalar_supervisor: entero(f.dias_escalar_supervisor, 7),
         dia_corte_planilla: corte && corte >= 1 && corte <= 31 ? corte : null,
+        primera_cuota_centimos: Math.round((parseFloat(f.primera_cuota) || 0) * 100),
+        hora_tolerancia: /^\d{2}:\d{2}$/.test(f.hora_tolerancia ?? '') ? f.hora_tolerancia : '08:15',
+        dias_alerta_cuota: entero(f.dias_alerta_cuota, 3),
       })
       .eq('empresa_id', cfg.empresa_id)
     let fallo = error
@@ -76,6 +79,13 @@ export default function Ajustes() {
           <Campo etiqueta="Firma de la empresa (sale en los mensajes)" nombre="firma" f={f} setF={setF} full />
           <Campo etiqueta="Valor de una venta (S/)" nombre="valor_venta" f={f} setF={setF} inputMode="decimal" />
           <Campo etiqueta="Día de corte de planilla (1 a 31)" nombre="dia_corte_planilla" f={f} setF={setF} inputMode="numeric" placeholder="Sin definir" />
+        </div>
+
+        <h2>Primera mensualidad y jornada</h2>
+        <div className="grid2">
+          <Campo etiqueta="Primera mensualidad (S/)" nombre="primera_cuota" f={f} setF={setF} inputMode="decimal" />
+          <Campo etiqueta="Días sin pago para alertar" nombre="dias_alerta_cuota" f={f} setF={setF} inputMode="numeric" />
+          <Campo etiqueta="Ingreso a tiempo hasta las" nombre="hora_tolerancia" f={f} setF={setF} type="time" />
         </div>
 
         <h2>Cómo llama tu empresa a cada cosa</h2>

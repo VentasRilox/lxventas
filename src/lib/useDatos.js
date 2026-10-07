@@ -41,3 +41,39 @@ export function useProspectos() {
 
   return { ...estado, recargar: cargar }
 }
+
+// Ventas con la primera mensualidad sin confirmar (de cualquier mes).
+export function useCobros() {
+  const [estado, setEstado] = useState({ cobros: [], cargando: true, error: '' })
+
+  const cargar = useCallback(async () => {
+    const { data, error } = await traerTodo(() =>
+      supabase.from('ventas').select('*').neq('cuota_estado', 'confirmada').neq('estado', 'caida').order('fecha')
+    )
+    setEstado({ cobros: data ?? [], cargando: false, error: error ? traducirError(error) : '' })
+  }, [])
+
+  useEffect(() => {
+    cargar()
+  }, [cargar])
+
+  return { ...estado, recargar: cargar }
+}
+
+// Ingresos y salidas entre dos fechas.
+export function useAsistencias(desde, hasta) {
+  const [estado, setEstado] = useState({ asistencias: [], cargando: true, error: '' })
+
+  const cargar = useCallback(async () => {
+    const { data, error } = await traerTodo(() =>
+      supabase.from('asistencias').select('*').gte('fecha', desde).lte('fecha', hasta).order('fecha')
+    )
+    setEstado({ asistencias: data ?? [], cargando: false, error: error ? traducirError(error) : '' })
+  }, [desde, hasta])
+
+  useEffect(() => {
+    cargar()
+  }, [cargar])
+
+  return { ...estado, recargar: cargar }
+}

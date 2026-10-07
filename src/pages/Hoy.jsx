@@ -5,6 +5,8 @@ import { useProspectos } from '../lib/useDatos'
 import { diasEntre, fechaCorta, fechaLocalHoy } from '../lib/fecha'
 import { puntajeProspecto, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
+import Jornada from '../components/Jornada.jsx'
+import MisCobros from '../components/MisCobros.jsx'
 
 export default function Hoy() {
   const { cfg, perfil } = useSesion()
@@ -26,6 +28,9 @@ export default function Hoy() {
 
   return (
     <main className="contenido contenido--angosto">
+      <Jornada />
+      <MisCobros />
+
       <div>
         <h1>{tocan.length ? `Hoy te toca escribir a ${tocan.length} ${contacto}${tocan.length === 1 ? '' : 's'}` : 'Hoy no tienes contactos pendientes'}</h1>
         <p className="muted">Arriba están los que tienen más opción de cerrar: nombrados y con interés alto.</p>

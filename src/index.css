@@ -109,6 +109,7 @@ input:focus-visible, textarea:focus-visible, select:focus-visible, button:focus-
 .btn--sec { color: var(--ink); background: var(--chip); }
 .btn--peligro { color: #fff; background: var(--crit); }
 .btn--chico { min-height: 40px; font-size: var(--t-sm); font-weight: 500; border-radius: 9px; padding: 0 12px; }
+.btn--grande { min-height: 64px; font-size: var(--t-lg); border-radius: 14px; }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
 .acciones { display: flex; flex-wrap: wrap; gap: 10px; }
 .acciones > .btn { flex: 1; }
@@ -157,6 +158,15 @@ tr.total td { font-weight: 700; background: var(--bg); }
 .tab { font: inherit; font-size: var(--t-sm); font-weight: 500; color: var(--ink); background: var(--surface); border: 1.5px solid var(--line); border-radius: 10px; min-height: 44px; padding: 0 14px; cursor: pointer; white-space: nowrap; }
 .tab[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .estado { min-height: 60dvh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); }
+
+/* ---------- Jornada y cobros ---------- */
+.jornada { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.jornada div { background: var(--bg); border-radius: 10px; padding: 10px 12px; }
+.jornada span { display: block; font-size: var(--t-xs); color: var(--muted); font-weight: 500; }
+.jornada b { font-family: var(--titulos); font-size: var(--t-xl); line-height: 1.2; font-weight: 600; font-variant-numeric: lining-nums tabular-nums; }
+.lista li.apilado { flex-direction: column; align-items: stretch; }
+.lista li.apilado > .fila { align-items: flex-start; }
+.pago { background: var(--bg); border-radius: 10px; padding: 12px; }
 
 /* ---------- Login ---------- */
 .login { min-height: 100dvh; display: flex; align-items: center; justify-content: center; padding: 24px; background: var(--marca); }

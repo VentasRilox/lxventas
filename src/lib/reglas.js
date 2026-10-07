@@ -29,18 +29,47 @@ export function esCaida(venta) {
   return venta.estado === 'caida'
 }
 
-export function esValida(venta, cfg) {
-  if (esCaida(venta)) return false
+// ¿Cumple las condiciones de la venta? (por ejemplo: nombrado y con planilla)
+export function cumpleCondiciones(venta, cfg) {
   const condicion = sinTildes(venta.condicion).includes(sinTildes(cfg?.condicion_valida ?? 'NOMBRAD'))
   const pago = sinTildes(venta.pago).includes(sinTildes(cfg?.pago_valido ?? 'PLANILLA'))
   return condicion && pago
 }
 
+export function cuotaConfirmada(venta) {
+  return venta.cuota_estado === 'confirmada'
+}
+
+// Venta válida: cumple las condiciones y su primera mensualidad está
+// confirmada. Es la única que cuenta para metas, bonos y caja.
+export function esValida(venta, cfg) {
+  return !esCaida(venta) && cumpleCondiciones(venta, cfg) && cuotaConfirmada(venta)
+}
+
+// Cumple las condiciones, pero todavía no tiene la primera mensualidad confirmada.
+export function faltaPago(venta, cfg) {
+  return !esCaida(venta) && cumpleCondiciones(venta, cfg) && !cuotaConfirmada(venta)
+}
+
 export function motivoNoValida(venta, cfg) {
   if (esCaida(venta)) return 'Caída'
   if (!sinTildes(venta.condicion).includes(sinTildes(cfg?.condicion_valida ?? 'NOMBRAD'))) return 'No nombrado'
-  return 'Sin planilla'
+  if (!cumpleCondiciones(venta, cfg)) return 'Sin planilla'
+  return venta.cuota_estado === 'reportada' ? 'Pago por confirmar' : 'Falta pago'
 }
+
+// Etiqueta de estado de una venta: [color, texto].
+export function estadoVenta(venta, cfg) {
+  if (esValida(venta, cfg)) return ['ok', 'Válida']
+  return [esCaida(venta) ? 'crit' : 'warn', motivoNoValida(venta, cfg)]
+}
+
+// Monto de la primera mensualidad de una venta, en céntimos.
+export function montoCuota(venta, cfg) {
+  return venta.cuota_centimos ?? cfg?.primera_cuota_centimos ?? 13000
+}
+
+export const MEDIOS_CUOTA = ['Yape', 'Cuenta de la empresa']
 
 // Escala de pagos acordada (en soles). Hoy es fija; pasará a la configuración
 // de cada empresa cuando haya un segundo cliente con otra escala.

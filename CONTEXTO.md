@@ -23,7 +23,7 @@ Igual que LX Cobros: React + Vite (JavaScript), Supabase (Postgres, Auth, RLS, E
 
 ## Base de datos
 
-Definida en `migraciones/001-base.sql`. Tablas: `empresas`, `zonas`, `perfiles`, `configuracion`, `visitas`, `ventas`, `prospectos`, `contactos`, `plantillas`.
+Definida en `migraciones/` (se ejecutan en orden: 001, 002, 003). Tablas: `empresas`, `zonas`, `perfiles`, `configuracion`, `visitas`, `ventas`, `prospectos`, `contactos`, `plantillas`, `asistencias`.
 
 Funciones de sesión: `mi_perfil()`, `mi_empresa()`, `mi_rol()`, `mi_zona()`, `veo_zona(uuid)`. El trigger `sellar_registro` pone empresa, asesor y zona al insertar: el cliente no puede falsearlos.
 
@@ -38,11 +38,17 @@ Los usuarios del equipo se crean desde la pantalla Equipo, que llama a la Edge F
 - Nunca `$$` en SQL ni dos bloques con la misma etiqueta en un archivo: el SQL Editor de Supabase los corrompe.
 - El perfil se lee con `perfiles.usuario_id = auth.uid()`, nunca con `perfiles.id`.
 - Toda vista SQL lleva `security_invoker=on`.
-- Venta válida = condición y pago que contienen los textos de `configuracion` (`NOMBRAD` y `PLANILLA`) y estado distinto de `caida`. Solo las válidas cuentan para metas y bonos.
+- Venta válida = condición y pago que contienen los textos de `configuracion` (`NOMBRAD` y `PLANILLA`), estado distinto de `caida` y primera mensualidad confirmada (`ventas.cuota_estado = 'confirmada'`). Solo las válidas cuentan para metas, bonos y caja.
+- Primera mensualidad: `pendiente` → `reportada` (el asesor avisa que ya se pagó) → `confirmada` (solo supervisor o jefe; lo impone el trigger `proteger_cuota`). El supervisor le hace seguimiento en Panel › Cobros.
+- Jornada: el asesor marca ingreso y salida en la pantalla Hoy (`asistencias`, una fila por asesor y día, con hora y ubicación). Lo marcado no se cambia (trigger `proteger_asistencia`); solo el jefe corrige. Se revisa en Panel › Asistencia.
 - Visitas, ventas y prospectos llevan `idem_key` (único por empresa): reenviar nunca duplica. Sin señal, visitas y ventas quedan en una cola en el celular (`src/lib/cola.js`) hasta que vuelve la conexión; es la única excepción a no guardar datos de negocio en localStorage.
 - Los mensajes de seguimiento salen de `plantillas` y solo deben afirmar cosas ciertas del producto.
 
 ## Pendiente
+
+- Fotos de evidencia (punto de encuentro, voucher del pago, contrato): requieren Supabase Storage; hoy siguen yendo por WhatsApp.
+- Asistencia del supervisor, movilidad con tope diario y metas del día (visitas, demostraciones, colegios) en la pantalla Hoy.
+- Enlace o QR para que el docente deje sus datos (ticket de media beca).
 
 - La escala de pagos (básicos, premios y bonos) está fija en `src/lib/reglas.js`; debe pasar a `configuracion` cuando haya un segundo cliente.
 - Reactivación automática de prospectos pausados al inicio del año escolar.

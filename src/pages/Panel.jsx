@@ -2,16 +2,18 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
-import { useMes, useProspectos } from '../lib/useDatos'
+import { useCobros, useMes, useProspectos } from '../lib/useDatos'
 import { traducirError } from '../lib/errores'
 import { diasEntre, diasHabiles, fechaCorta, fechaLocalHoy, finDeMes, lunesDe, mesDe } from '../lib/fecha'
-import { BASICO, MOTIVOS, bonoSupervisor, esCaida, esValida, estadoAvance, motivoNoValida, pagoJefe, premioAsesor, soles, titulo } from '../lib/reglas'
+import { BASICO, MOTIVOS, bonoSupervisor, esCaida, esValida, estadoAvance, estadoVenta, faltaPago, montoCuota, pagoJefe, premioAsesor, soles, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
+import Cobros from './panel/Cobros.jsx'
+import Asistencia from './panel/Asistencia.jsx'
 
 const TABS = {
-  supervisor: [['resumen', 'Resumen'], ['asesores', 'Mi equipo'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento']],
-  jefe: [['resumen', 'Resumen'], ['supervisores', 'Supervisores'], ['asesores', 'Asesores'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
-  gerencia: [['resumen', 'Resumen'], ['supervisores', 'Supervisores'], ['ventas', 'Ventas'], ['dinero', 'Dinero']],
+  supervisor: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['asesores', 'Mi equipo'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento']],
+  jefe: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['supervisores', 'Supervisores'], ['asesores', 'Asesores'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
+  gerencia: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['supervisores', 'Supervisores'], ['ventas', 'Ventas'], ['dinero', 'Dinero']],
 }
 
 function Pill({ e }) {
@@ -42,7 +44,7 @@ function pct(a, b) {
 }
 
 function nuevo() {
-  return { val: 0, rev: 0, cai: 0, sem: 0, vis: 0, ing: 0, con: 0, mov: 0, visRef: 0, ult: '' }
+  return { val: 0, pag: 0, rev: 0, cai: 0, sem: 0, caja: 0, vis: 0, ing: 0, con: 0, mov: 0, visRef: 0, ult: '' }
 }
 
 // Suma visitas y ventas por zona y por asesor.
@@ -73,8 +75,10 @@ function calcular({ visitas, ventas, perfiles, zonasVisibles, cfg, mes, hoy }) {
       if (esCaida(v)) o.cai++
       else if (esValida(v, cfg)) {
         o.val++
+        o.caja += montoCuota(v, cfg)
         if (v.fecha >= lunes && v.fecha <= ref) o.sem++
-      } else o.rev++
+      } else if (faltaPago(v, cfg)) o.pag++
+      else o.rev++
       if (v.fecha > o.ult) o.ult = v.fecha
     }
   }
@@ -105,11 +109,12 @@ export default function Panel() {
   const [tab, setTab] = useState('resumen')
   const { visitas, ventas, cargando, error, recargar } = useMes(mes)
   const seguimiento = useProspectos()
+  const pagos = useCobros()
   const [perfiles, setPerfiles] = useState([])
   const [fallo, setFallo] = useState('')
 
   useEffect(() => {
-    supabase.from('perfiles').select('id, nombre, rol, zona_id, meta_mensual, activo').then(({ data }) => setPerfiles(data ?? []))
+    supabase.from('perfiles').select('id, nombre, rol, zona_id, meta_mensual, activo, telefono').then(({ data }) => setPerfiles(data ?? []))
   }, [])
 
   const zonasVisibles = useMemo(
@@ -137,13 +142,21 @@ export default function Panel() {
     else recargar()
   }
 
+  const cuota = cfg?.primera_cuota_centimos ?? 13000
+  const porConfirmar = pagos.cobros.filter((v) => v.cuota_estado === 'reportada').length
+  const recargarTodo = () => {
+    recargar()
+    seguimiento.recargar()
+    pagos.recargar()
+  }
+
   return (
     <main className="contenido">
       <div className="fila" style={{ flexWrap: 'wrap' }}>
         <h1>Panel comercial</h1>
         <div className="fila">
           <input type="month" aria-label="Mes" style={{ width: 'auto' }} value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} />
-          <button type="button" className="btn btn--sec btn--chico" onClick={() => { recargar(); seguimiento.recargar() }}>
+          <button type="button" className="btn btn--sec btn--chico" onClick={recargarTodo}>
             {cargando ? 'Cargando…' : 'Actualizar'}
           </button>
         </div>
@@ -154,6 +167,7 @@ export default function Panel() {
         {tabs.map(([v, t]) => (
           <button key={v} type="button" className="tab" aria-pressed={actual === v} onClick={() => setTab(v)}>
             {t}
+            {v === 'cobros' && pagos.cobros.length > 0 && ` (${pagos.cobros.length})`}
           </button>
         ))}
       </div>
@@ -167,7 +181,9 @@ export default function Panel() {
               <section>
                 <h2>Avance del mes</h2>
                 <div className="kpis">
-                  <Kpi t="Ventas válidas" v={`${C.tot.val} de ${C.tot.meta}`} s="Nombrado con descuento por planilla" />
+                  <Kpi t="Ventas válidas" v={`${C.tot.val} de ${C.tot.meta}`} s="Nombrado, planilla y primera mensualidad pagada" />
+                  <Kpi t="Caja del mes" v={soles(C.tot.caja)} s={`Meta: ${soles(C.tot.meta * cuota)}`} />
+                  <Kpi t="Falta pago" v={C.tot.pag} s={porConfirmar ? `${porConfirmar} por confirmar en Cobros` : 'Vendidas, sin primera mensualidad'} />
                   <Kpi t="Esta semana" v={C.tot.sem} s={`Meta semanal: ${metaSemanal * C.zonas.length}`} />
                   <Kpi t="Por revisar" v={C.tot.rev} s="No cumplen nombrado y planilla" />
                   {rol === 'supervisor' ? (
@@ -203,9 +219,9 @@ export default function Panel() {
                         </p>
                         <div className="embudo">
                           <div><b>{z.vis}</b><span>Visitas</span></div>
-                          <div><b>{pct(z.ing, z.vis)}</b><span>Con ingreso</span></div>
                           <div><b>{z.con}</b><span>{contacto}s</span></div>
-                          <div><b>{z.val}</b><span>Ventas</span></div>
+                          <div><b>{z.pag}</b><span>Falta pago</span></div>
+                          <div><b>{soles(z.caja)}</b><span>Caja</span></div>
                         </div>
                         {rol !== 'supervisor' && <p className="small muted">Supervisor: {z.supervisor_id ? nombreDe(z.supervisor_id) : 'por asignar'}</p>}
                       </div>
@@ -267,7 +283,7 @@ export default function Panel() {
                 <div className="tabla">
                   <table>
                     <thead>
-                      <tr><th>Asesor</th><th>{nz}</th><th className="n">Ventas</th><th className="n">Semana</th><th className="n">Visitas {fechaCorta(C.ref)}</th><th className="n">Por revisar</th><th>Último reporte</th><th>Estado</th></tr>
+                      <tr><th>Asesor</th><th>{nz}</th><th className="n">Ventas</th><th className="n">Semana</th><th className="n">Visitas {fechaCorta(C.ref)}</th><th className="n">Falta pago</th><th className="n">Por revisar</th><th>Último reporte</th><th>Estado</th></tr>
                     </thead>
                     <tbody>
                       {C.asesores.map((a) => {
@@ -280,13 +296,14 @@ export default function Panel() {
                             <td className="n">{a.val} / {a.meta}</td>
                             <td className="n">{a.sem}</td>
                             <td className="n">{a.visRef}</td>
+                            <td className="n">{a.pag ? <span className="pill warn">{a.pag}</span> : 0}</td>
                             <td className="n">{a.rev}</td>
                             <td>{a.ult ? fechaCorta(a.ult) : '–'}</td>
                             <td><Pill e={e} /></td>
                           </tr>
                         )
                       })}
-                      {C.asesores.length === 0 && <tr><td colSpan="8" className="muted">Aún no hay asesores registrados.</td></tr>}
+                      {C.asesores.length === 0 && <tr><td colSpan="9" className="muted">Aún no hay asesores registrados.</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -326,7 +343,7 @@ export default function Panel() {
                         <td>{v.lugar}</td>
                         <td>{nombreDe(v.asesor_id)}</td>
                         <td>{titulo(v.programa)}</td>
-                        <td><Pill e={esValida(v, cfg) ? ['ok', 'Válida'] : [esCaida(v) ? 'crit' : 'warn', motivoNoValida(v, cfg)]} /></td>
+                        <td><Pill e={estadoVenta(v, cfg)} /></td>
                         {rol !== 'gerencia' && (
                           <td>
                             <button type="button" className="btn btn--sec btn--chico" onClick={() => marcarCaida(v)}>
@@ -340,8 +357,16 @@ export default function Panel() {
                   </tbody>
                 </table>
               </div>
-              <p className="small muted">Válida: nombrado con descuento por planilla. Una venta caída no cuenta para la meta ni para los bonos.</p>
+              <p className="small muted">Válida: nombrado, con descuento por planilla y primera mensualidad confirmada. Una venta caída o sin pago no cuenta para la meta ni para los bonos.</p>
             </section>
+          )}
+
+          {actual === 'cobros' && (
+            <Cobros cobros={pagos.cobros} recargar={recargarTodo} perfiles={perfiles} nombreDe={nombreDe} cfg={cfg} rol={rol} />
+          )}
+
+          {actual === 'asistencia' && (
+            <Asistencia mes={mes} diaInicial={C.ref} asesores={C.asesores} nombreZona={(a) => nombreZona(C.zona, a)} cfg={cfg} />
           )}
 
           {actual === 'seguimiento' && (
@@ -362,6 +387,7 @@ export default function Panel() {
                 <section>
                   <h2>Dinero del mes</h2>
                   <div className="kpis">
+                    <Kpi t="Caja del mes" v={soles(C.tot.caja)} s="Primeras mensualidades confirmadas" />
                     <Kpi t="Valor contratado" v={soles(valor)} s={`${C.tot.val} ventas válidas × ${soles(valorVenta)}`} />
                     <Kpi t="Costo del equipo" v={soles(costo)} s="Básicos, premios, bonos y movilidad" />
                     <Kpi t="Costo sobre lo contratado" v={valor ? ((costo / valor) * 100).toFixed(1) + '%' : '–'} />

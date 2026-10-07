@@ -27,6 +27,11 @@ export function pendientes() {
   return leer().length
 }
 
+// Registro que todavía espera señal para subir, si lo hay.
+export function enCola(tabla, idemKey) {
+  return leer().find((x) => x.tabla === tabla && x.fila.idem_key === idemKey)?.fila ?? null
+}
+
 async function enviar(tabla, fila) {
   return supabase.from(tabla).upsert(fila, { onConflict: 'empresa_id,idem_key' }).select('id').maybeSingle()
 }

@@ -54,6 +54,7 @@ export function textoVenta(f, ctx) {
     '✅ SUSCRIPCION: ' + (mayus(f.suscripcion) || '----------'),
     '✅ MODALIDAD DE PAGO: ' + mayus(f.pago),
     '✅ *BENEFICIARIO*: ' + mayus(f.beneficiario),
+    '✅ 1RA MENSUALIDAD: ' + (f.cuota === 'Ya pagó' ? 'PAGADA' + (f.cuota_medio ? ' POR ' + mayus(f.cuota_medio) : '') + (f.cuota_operacion ? ' · OP. ' + mayus(f.cuota_operacion) : '') : 'PENDIENTE'),
     'OBSERVACIÓN: ' + mayus(f.observacion),
   ].join('\n')
 }

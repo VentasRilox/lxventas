@@ -4,7 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useMes } from '../lib/useDatos'
 import { traducirError } from '../lib/errores'
 import { diaSemana, diasHabiles, fechaCorta, fechaLocalHoy, fechaMensaje, finDeMes, mesDe } from '../lib/fecha'
-import { esValida, mayus, soles, titulo } from '../lib/reglas'
+import { esValida, estadoVenta, faltaPago, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp } from '../lib/mensajes'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
@@ -25,7 +25,8 @@ export default function Avance() {
     for (const v of misVisitas) ultima[v.lugar] = v
     return {
       validas: validas.length,
-      porRevisar: misVentas.filter((v) => v.estado !== 'caida' && !esValida(v, cfg)).length,
+      sinPago: misVentas.filter((v) => faltaPago(v, cfg)).length,
+      porRevisar: misVentas.filter((v) => v.estado !== 'caida' && !esValida(v, cfg) && !faltaPago(v, cfg)).length,
       ventasHoy: misVentas.filter((v) => v.fecha === hoy),
       ventasMes: misVentas.slice().reverse(),
       hoyVis,
@@ -86,6 +87,7 @@ export default function Avance() {
           {faltan
             ? `Te faltan ${faltan} en ${quedan} días hábiles: ${Math.ceil((faltan / Math.max(1, quedan)) * 10) / 10} por día. La marca negra es donde deberías ir hoy.`
             : 'Meta cumplida. Todo lo que cierres ahora es extra.'}
+          {r.sinPago > 0 && ` Tienes ${r.sinPago} sin primera mensualidad confirmada: no cuentan hasta que se pague.`}
           {r.porRevisar > 0 && ` Tienes ${r.porRevisar} por revisar: no cuentan hasta que sean de nombrado con planilla.`}
         </p>
       </section>
@@ -154,9 +156,7 @@ export default function Avance() {
                 {titulo(v.nombre)}
                 <small>{[titulo(v.programa), titulo(v.pago), fechaCorta(v.fecha)].filter(Boolean).join(' · ')}</small>
               </span>
-              <span className={`pill ${v.estado === 'caida' ? 'crit' : esValida(v, cfg) ? 'ok' : 'warn'}`}>
-                {v.estado === 'caida' ? 'Caída' : esValida(v, cfg) ? 'Válida' : 'Por revisar'}
-              </span>
+              <span className={`pill ${estadoVenta(v, cfg)[0]}`}>{estadoVenta(v, cfg)[1]}</span>
             </li>
           ))}
           {r.ventasMes.length === 0 && <li><span className="muted">Todavía no registras ventas este mes.</span></li>}

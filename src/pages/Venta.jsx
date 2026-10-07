@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaLocalHoy, horaLocalAhora } from '../lib/fecha'
-import { esValida, mayus, titulo } from '../lib/reglas'
+import { MEDIOS_CUOTA, cumpleCondiciones, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
 import Chips from '../components/Chips.jsx'
@@ -24,6 +24,7 @@ function vacio() {
   return {
     programa: recordado(CLAVE_PROGRAMA), estrategia: '', nombre: '', dni: '', celular: '', correo: '', lugar: '',
     desempeno: '', condicion: '', pago: '', suscripcion: '', beneficiario: '', observacion: '',
+    cuota: '', cuota_medio: '', cuota_operacion: '',
     fecha: fechaLocalHoy(), hora: horaLocalAhora(),
   }
 }
@@ -42,13 +43,17 @@ export default function Venta() {
   const texto = textoVenta(f, ctx)
   const dni = f.dni.replace(/\D/g, '')
   const celular = f.celular.replace(/\D/g, '')
+  const cumple = cumpleCondiciones({ condicion: f.condicion, pago: f.pago }, cfg)
+  const pagoHoy = f.cuota === 'Ya pagó'
+  const montoCuota = cfg?.primera_cuota_centimos ?? 13000
   const falta = [
     !mayus(f.programa) && 'programa',
     !mayus(f.nombre) && 'nombre',
+    !f.cuota && 'indicar si ya pagó la primera mensualidad',
+    pagoHoy && !f.cuota_medio && 'por dónde pagó',
     dni.length !== 8 && 'DNI de 8 dígitos',
     celular && celular.length !== 9 && 'celular de 9 dígitos',
   ].filter(Boolean)
-  const valida = esValida({ estado: 'registrada', condicion: f.condicion, pago: f.pago }, cfg)
 
   // Si viene de un prospecto, sus datos ya llegan llenos.
   useEffect(() => {
@@ -93,6 +98,11 @@ export default function Venta() {
       suscripcion: mayus(f.suscripcion),
       beneficiario: mayus(f.beneficiario),
       observacion: mayus(f.observacion),
+      cuota_estado: pagoHoy ? 'reportada' : 'pendiente',
+      cuota_medio: pagoHoy ? mayus(f.cuota_medio) : null,
+      cuota_operacion: pagoHoy ? f.cuota_operacion.trim() : null,
+      cuota_centimos: pagoHoy ? montoCuota : null,
+      cuota_fecha: pagoHoy ? f.fecha : null,
     }
     const r = await guardarRegistro('ventas', fila)
     if (!r.ok) {
@@ -172,8 +182,23 @@ export default function Venta() {
           <Campo etiqueta="Fecha" nombre="fecha" f={f} setF={setF} type="date" />
           <Campo etiqueta="Hora" nombre="hora" f={f} setF={setF} type="time" />
         </div>
-        {(f.condicion || f.pago) && !valida && (
+        {(f.condicion || f.pago) && !cumple && (
           <p className="aviso">Esta venta quedará "por revisar": solo cuenta para la meta la de nombrado con descuento por planilla.</p>
+        )}
+      </section>
+
+      <section>
+        <h2>Primera mensualidad · {soles(montoCuota)}</h2>
+        <Chips opciones={['Ya pagó', 'Todavía no']} valor={f.cuota} alCambiar={(v) => setF({ ...f, cuota: v })} />
+        {pagoHoy && (
+          <>
+            <Chips opciones={MEDIOS_CUOTA} valor={f.cuota_medio} alCambiar={(v) => setF({ ...f, cuota_medio: v })} />
+            <Campo etiqueta="N.° de operación (el que sale en el voucher)" nombre="cuota_operacion" f={f} setF={setF} inputMode="numeric" autoComplete="off" placeholder="Opcional, pero ayuda a ubicar el pago" />
+            <p className="small muted">Tu supervisor confirmará el pago. Desde ahí la venta cuenta para tu meta.</p>
+          </>
+        )}
+        {f.cuota === 'Todavía no' && (
+          <p className="aviso">La venta se guarda, pero no cuenta para tu meta hasta que se pague. Te aparecerá en "Hoy" para que le hagas seguimiento.</p>
         )}
       </section>
 

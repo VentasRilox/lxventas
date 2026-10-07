@@ -85,3 +85,29 @@ export function lunesDe(iso) {
   d.setDate(d.getDate() - ((d.getDay() + 6) % 7))
   return formatearFechaLocal(d)
 }
+
+// '14:05' → '2:05 p. m.'
+export function horaCorta(hora) {
+  const p = String(hora ?? '').split(':')
+  if (p.length < 2) return ''
+  const h = Number(p[0])
+  return `${h % 12 || 12}:${p[1]} ${h < 12 ? 'a. m.' : 'p. m.'}`
+}
+
+// Hora local ('HH:MM') de una marca de tiempo del servidor.
+export function horaDeMarca(marca) {
+  if (!marca) return ''
+  const d = new Date(marca)
+  return `${dos(d.getHours())}:${dos(d.getMinutes())}`
+}
+
+// Minutos entre dos horas 'HH:MM' (positivo si la segunda es posterior).
+export function minutosEntre(desde, hasta) {
+  const m = (h) => {
+    const p = String(h ?? '').split(':').map(Number)
+    return p.length < 2 || p.some(Number.isNaN) ? null : p[0] * 60 + p[1]
+  }
+  const a = m(desde)
+  const b = m(hasta)
+  return a === null || b === null ? null : b - a
+}
