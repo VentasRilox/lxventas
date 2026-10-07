@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
-import { diasEntre, fechaLocalHoy } from '../lib/fecha'
-import { soles, titulo } from '../lib/reglas'
+import { fechaCorta, fechaLocalHoy } from '../lib/fecha'
+import { estadoCompromiso, soles, titulo } from '../lib/reglas'
 import FormularioPago from './FormularioPago.jsx'
 
 // Ventas del asesor que todavía no tienen la primera mensualidad confirmada.
@@ -13,15 +13,18 @@ export default function MisCobros() {
   const hoy = fechaLocalHoy()
   const [ventas, setVentas] = useState([])
   const [abierta, setAbierta] = useState(null)
+  const [moviendo, setMoviendo] = useState(null)
+  const [fechaNueva, setFechaNueva] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [fallo, setFallo] = useState('')
   const [vuelta, setVuelta] = useState(0)
+  const alerta = cfg?.dias_alerta_cuota ?? 3
 
   useEffect(() => {
     let activo = true
     supabase
       .from('ventas')
-      .select('id, nombre, lugar, fecha, cuota_estado, cuota_nota')
+      .select('id, nombre, lugar, fecha, cuota_estado, cuota_nota, cuota_compromiso, cuota_reprogramaciones')
       .eq('asesor_id', perfil.id)
       .neq('cuota_estado', 'confirmada')
       .neq('estado', 'caida')
@@ -56,10 +59,23 @@ export default function MisCobros() {
     }
   }
 
+  async function reprogramar(venta) {
+    if (!fechaNueva || fechaNueva < hoy) return
+    setOcupado(true)
+    setFallo('')
+    const { error } = await supabase.from('ventas').update({ cuota_compromiso: fechaNueva }).eq('id', venta.id)
+    setOcupado(false)
+    if (error) setFallo(traducirError(error))
+    else {
+      setMoviendo(null)
+      setFechaNueva('')
+      setVuelta((n) => n + 1)
+    }
+  }
+
   if (ventas.length === 0) return null
 
   const pendientes = ventas.filter((v) => v.cuota_estado === 'pendiente')
-  const alerta = cfg?.dias_alerta_cuota ?? 3
 
   return (
     <section>
@@ -71,27 +87,52 @@ export default function MisCobros() {
       </p>
       {fallo && <p className="aviso aviso--crit">{fallo}</p>}
       <ul className="lista">
-        {ventas.map((v) => {
-          const dias = diasEntre(v.fecha, hoy)
+        {ventas
+          .slice()
+          .sort((a, b) => ((a.cuota_compromiso ?? a.fecha) < (b.cuota_compromiso ?? b.fecha) ? -1 : 1))
+          .map((v) => {
           const reportada = v.cuota_estado === 'reportada'
+          const e = estadoCompromiso(v, hoy, alerta)
           return (
             <li key={v.id} className="apilado">
               <div className="fila">
                 <span>
                   {titulo(v.nombre)}
-                  <small>{[v.lugar, dias === 0 ? 'vendido hoy' : `hace ${dias} ${dias === 1 ? 'día' : 'días'}`].filter(Boolean).join(' · ')}</small>
+                  <small>{[v.lugar, 'vendido el ' + fechaCorta(v.fecha)].filter(Boolean).join(' · ')}</small>
                 </span>
                 {reportada ? (
                   <span className="pill neu">Por confirmar</span>
                 ) : (
-                  <span className={`pill ${dias >= alerta ? 'crit' : 'warn'}`}>Falta pago</span>
+                  <span className={`pill ${e.clase}`}>{e.texto}</span>
                 )}
               </div>
               {v.cuota_nota && !reportada && <p className="aviso small">Tu supervisor anotó: {v.cuota_nota}</p>}
-              {!reportada && abierta !== v.id && (
-                <button type="button" className="btn btn--sec btn--chico" onClick={() => setAbierta(v.id)}>
-                  Ya pagó
-                </button>
+              {!reportada && abierta !== v.id && moviendo !== v.id && (
+                <div className="acciones">
+                  <button type="button" className="btn btn--chico" onClick={() => setAbierta(v.id)}>
+                    Ya pagó
+                  </button>
+                  <button type="button" className="btn btn--sec btn--chico" onClick={() => { setMoviendo(v.id); setFechaNueva('') }}>
+                    {v.cuota_compromiso ? 'Cambiar fecha' : 'Poner fecha de pago'}
+                  </button>
+                </div>
+              )}
+              {moviendo === v.id && (
+                <div className="seccion pago">
+                  <label>
+                    ¿Qué día va a pagar?
+                    <input type="date" min={hoy} value={fechaNueva} onChange={(ev) => setFechaNueva(ev.target.value)} />
+                  </label>
+                  <div className="acciones">
+                    <button type="button" className="btn btn--chico" disabled={ocupado || !fechaNueva || fechaNueva < hoy} onClick={() => reprogramar(v)}>
+                      {ocupado ? 'Guardando…' : 'Guardar fecha'}
+                    </button>
+                    <button type="button" className="btn btn--sec btn--chico" disabled={ocupado} onClick={() => setMoviendo(null)}>
+                      Cancelar
+                    </button>
+                  </div>
+                  {v.cuota_compromiso && <p className="small muted">Tu supervisor verá que la fecha se cambió.</p>}
+                </div>
               )}
               {abierta === v.id && (
                 <FormularioPago textoBoton="Avisar pago" ocupado={ocupado} alGuardar={(d) => reportar(v, d)} alCancelar={() => setAbierta(null)} />

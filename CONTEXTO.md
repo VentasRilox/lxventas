@@ -23,7 +23,7 @@ Igual que LX Cobros: React + Vite (JavaScript), Supabase (Postgres, Auth, RLS, E
 
 ## Base de datos
 
-Definida en `migraciones/` (se ejecutan en orden: 001, 002, 003, 004, 005). Tablas: `empresas`, `zonas`, `perfiles`, `configuracion`, `visitas`, `ventas`, `prospectos`, `contactos`, `plantillas`, `asistencias`.
+Definida en `migraciones/` (se ejecutan en orden: 001, 002, 003, 004, 005, 006). Tablas: `empresas`, `zonas`, `perfiles`, `configuracion`, `visitas`, `ventas`, `prospectos`, `contactos`, `plantillas`, `asistencias`.
 
 Funciones de sesión: `mi_perfil()`, `mi_empresa()`, `mi_rol()`, `mi_zona()`, `veo_zona(uuid)`. El trigger `sellar_registro` pone empresa, asesor y zona al insertar: el cliente no puede falsearlos.
 
@@ -39,7 +39,7 @@ Los usuarios del equipo se crean desde la pantalla Equipo, que llama a la Edge F
 - El perfil se lee con `perfiles.usuario_id = auth.uid()`, nunca con `perfiles.id`.
 - Toda vista SQL lleva `security_invoker=on`.
 - Venta válida = condición y pago que contienen los textos de `configuracion` (`NOMBRAD` y `PLANILLA`), estado distinto de `caida` y primera mensualidad confirmada (`ventas.cuota_estado = 'confirmada'`). Solo las válidas cuentan para metas, bonos y caja.
-- Primera mensualidad: `pendiente` → `reportada` (el asesor avisa que ya se pagó) → `confirmada` (solo supervisor o jefe; lo impone el trigger `proteger_cuota`). El supervisor le hace seguimiento en Panel › Cobros.
+- Primera mensualidad: `pendiente` → `reportada` (el asesor avisa que ya se pagó) → `confirmada` (solo supervisor o jefe; lo impone el trigger `proteger_cuota`). El supervisor le hace seguimiento en Panel › Cobros. Si no paga en el momento, la venta guarda `cuota_compromiso` (el día en que prometió pagar): la alerta salta cuando esa fecha vence, y cada cambio de fecha se cuenta en `cuota_reprogramaciones`.
 - Periodo de venta: si la zona tiene `fecha_apertura`, su "mes" corre desde ese día (abre el 9 de octubre → 9 oct al 9 nov; luego 10 nov al 9 dic). El primer periodo también cuenta lo registrado hasta 45 días antes de abrir. Sin fecha, es el mes calendario. Todo el cálculo está en `src/lib/periodo.js`; el panel y "Mi avance" miden por periodo, nunca por mes calendario directo.
 - Contrato: por defecto se llena en papel y la app no lo pide. Las columnas del contrato y de documentos (`doc_*`) existen en `ventas`; la pantalla solo las muestra si `configuracion.pide_contrato` es verdadero (columna aún no creada: agregarla cuando un cliente lo pida). Con eso activo, la venta guarda los datos del contrato y los documentos firmados. No bloquean la venta: se pueden completar después abriendo `/venta?id=<venta>` desde "Mi avance".
 - Jornada: el asesor marca ingreso y salida en la pantalla Hoy (`asistencias`, una fila por asesor y día, con hora y ubicación). Lo marcado no se cambia (trigger `proteger_asistencia`); solo el jefe corrige. Se revisa en Panel › Asistencia.

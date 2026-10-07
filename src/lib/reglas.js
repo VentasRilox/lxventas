@@ -71,6 +71,21 @@ export function montoCuota(venta, cfg) {
 
 export const MEDIOS_CUOTA = ['Yape', 'Cuenta de la empresa']
 
+// Cómo va el cobro de una venta sin pagar: { clase, texto, vencida }.
+// Con fecha de compromiso manda esa fecha; sin ella, los días desde la venta.
+export function estadoCompromiso(venta, hoy, diasAlerta = 3) {
+  const dias = (desde, hasta) => Math.round((new Date(hasta + 'T12:00:00') - new Date(desde + 'T12:00:00')) / 86400000)
+  const corta = (iso) => iso.slice(8, 10) + '/' + iso.slice(5, 7)
+  if (venta.cuota_compromiso) {
+    const faltan = dias(hoy, venta.cuota_compromiso)
+    if (faltan < 0) return { clase: 'crit', texto: `Venció hace ${-faltan} ${faltan === -1 ? 'día' : 'días'}`, vencida: true }
+    if (faltan === 0) return { clase: 'warn', texto: 'Paga hoy', vencida: false }
+    return { clase: 'neu', texto: `Paga el ${corta(venta.cuota_compromiso)}`, vencida: false }
+  }
+  const pasaron = dias(venta.fecha, hoy)
+  return { clase: pasaron >= diasAlerta ? 'crit' : 'warn', texto: pasaron === 0 ? 'Sin fecha de pago' : `${pasaron} ${pasaron === 1 ? 'día' : 'días'} sin fecha`, vencida: pasaron >= diasAlerta }
+}
+
 // Datos que pide el contrato y documentos que firma el cliente.
 export const DATOS_CONTRATO = [
   ['celular', 'celular'], ['correo', 'correo'], ['direccion', 'dirección'], ['distrito', 'distrito'], ['provincia', 'provincia'],

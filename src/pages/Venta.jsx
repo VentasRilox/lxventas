@@ -4,7 +4,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
-import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora } from '../lib/fecha'
+import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora, sumarDias } from '../lib/fecha'
 import { DOCUMENTOS, MEDIOS_CUOTA, cumpleCondiciones, faltaContrato, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
@@ -24,7 +24,7 @@ function vacio() {
   return {
     programa: recordado(CLAVE_PROGRAMA), estrategia: '', nombre: '', dni: '', celular: '', correo: '', lugar: '',
     desempeno: '', condicion: '', pago: '', suscripcion: '', beneficiario: '', observacion: '',
-    cuota: '', cuota_medio: '', cuota_operacion: '',
+    cuota: '', cuota_medio: '', cuota_operacion: '', cuota_compromiso: '',
     direccion: '', distrito: '', provincia: '', fecha_alta: '', sueldo: '', afp: '', cuspp: '', profesion: '', documentos: [],
     fecha: fechaLocalHoy(), hora: horaLocalAhora(),
   }
@@ -54,6 +54,8 @@ export default function Venta() {
     !mayus(f.nombre) && 'nombre',
     !ventaId && !f.cuota && 'indicar si ya pagó la primera mensualidad',
     !ventaId && pagoHoy && !f.cuota_medio && 'por dónde pagó',
+    !ventaId && f.cuota === 'Todavía no' && !f.cuota_compromiso && 'qué día se comprometió a pagar',
+    !ventaId && f.cuota === 'Todavía no' && f.cuota_compromiso && f.cuota_compromiso < f.fecha && 'una fecha de pago que no sea anterior a la venta',
     dni.length !== 8 && 'DNI de 8 dígitos',
     celular && celular.length !== 9 && 'celular de 9 dígitos',
   ].filter(Boolean)
@@ -157,11 +159,12 @@ export default function Venta() {
       cuota_operacion: pagoHoy ? f.cuota_operacion.trim() : null,
       cuota_centimos: pagoHoy ? montoCuota : null,
       cuota_fecha: pagoHoy ? f.fecha : null,
+      cuota_compromiso: pagoHoy ? null : f.cuota_compromiso || null,
     }
     if (ventaId) {
       // Completar una venta ya registrada: no se tocan su dueño, su fecha ni su pago.
       const cambios = { ...fila }
-      for (const campo of ['empresa_id', 'asesor_id', 'zona_id', 'prospecto_id', 'idem_key', 'fecha', 'hora', 'cuota_estado', 'cuota_medio', 'cuota_operacion', 'cuota_centimos', 'cuota_fecha']) delete cambios[campo]
+      for (const campo of ['empresa_id', 'asesor_id', 'zona_id', 'prospecto_id', 'idem_key', 'fecha', 'hora', 'cuota_estado', 'cuota_medio', 'cuota_operacion', 'cuota_centimos', 'cuota_fecha', 'cuota_compromiso']) delete cambios[campo]
       const { error } = await supabase.from('ventas').update(cambios).eq('id', ventaId)
       setGuardando(false)
       setAviso(error ? ['crit', 'No se guardó: ' + traducirError(error)] : ['ok', 'Cambios guardados.'])
@@ -300,7 +303,16 @@ export default function Venta() {
           </>
         )}
         {f.cuota === 'Todavía no' && (
-          <p className="aviso">La venta se guarda, pero no cuenta para tu meta hasta que se pague. Te aparecerá en "Hoy" para que le hagas seguimiento.</p>
+          <>
+            <p className="etiqueta">¿Qué día se comprometió a pagar?</p>
+            <Chips
+              opciones={[[f.fecha, 'Hoy mismo'], [sumarDias(f.fecha, 1), 'Mañana'], [sumarDias(f.fecha, 3), 'En 3 días'], [sumarDias(f.fecha, 7), 'En 7 días']]}
+              valor={f.cuota_compromiso}
+              alCambiar={(v) => setF({ ...f, cuota_compromiso: v })}
+            />
+            <Campo etiqueta="U otra fecha" nombre="cuota_compromiso" f={f} setF={setF} type="date" min={f.fecha} />
+            <p className="small muted">La venta se guarda, pero cuenta para tu meta recién cuando se pague. Ese día te aparecerá en "Hoy" para que cobres.</p>
+          </>
         )}
       </section>
       )}

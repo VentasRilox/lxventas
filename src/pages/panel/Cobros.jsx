@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { traducirError } from '../../lib/errores'
 import { diasEntre, fechaCorta, fechaLocalHoy } from '../../lib/fecha'
-import { cumpleCondiciones, montoCuota, soles, titulo } from '../../lib/reglas'
+import { cumpleCondiciones, estadoCompromiso, montoCuota, soles, titulo } from '../../lib/reglas'
 import { enlaceWhatsApp } from '../../lib/mensajes'
 import FormularioPago from '../../components/FormularioPago.jsx'
 
@@ -20,8 +20,11 @@ export default function Cobros({ cobros, recargar, perfiles, nombreDe, cfg, rol 
   const contacto = (cfg?.nombre_contacto ?? 'Contacto').toLowerCase()
 
   const porConfirmar = cobros.filter((v) => v.cuota_estado === 'reportada')
-  const pendientes = cobros.filter((v) => v.cuota_estado === 'pendiente').sort((a, b) => (a.fecha < b.fecha ? -1 : 1))
-  const atrasadas = pendientes.filter((v) => diasEntre(v.fecha, hoy) >= alerta)
+  const pendientes = cobros
+    .filter((v) => v.cuota_estado === 'pendiente')
+    .sort((a, b) => ((a.cuota_compromiso ?? a.fecha) < (b.cuota_compromiso ?? b.fecha) ? -1 : 1))
+  const atrasadas = pendientes.filter((v) => estadoCompromiso(v, hoy, alerta).vencida)
+  const paraHoy = pendientes.filter((v) => v.cuota_compromiso === hoy)
   const porCobrar = cobros.reduce((s, v) => s + montoCuota(v, cfg), 0)
 
   async function actualizar(id, cambios) {
@@ -58,8 +61,10 @@ export default function Cobros({ cobros, recargar, perfiles, nombreDe, cfg, rol 
     return [
       `Hola, ${titulo(nombreDe(v.asesor_id)).split(' ')[0]}.`,
       `La venta de ${titulo(v.nombre)}${v.lugar ? ' (' + v.lugar + ')' : ''} del ${fechaCorta(v.fecha)} sigue sin la primera mensualidad de ${soles(montoCuota(v, cfg))}.`,
-      dias > 0 ? `Ya van ${dias} ${dias === 1 ? 'día' : 'días'}.` : '',
-      '¿Cuándo paga? Recuerda que sin ese pago la venta no cuenta para tu meta.',
+      v.cuota_compromiso
+        ? (v.cuota_compromiso < hoy ? `Se comprometió a pagar el ${fechaCorta(v.cuota_compromiso)} y ya venció.` : `Se comprometió a pagar el ${fechaCorta(v.cuota_compromiso)}.`)
+        : dias > 0 ? `Ya van ${dias} ${dias === 1 ? 'día' : 'días'} y no tiene fecha de pago.` : '',
+      v.cuota_compromiso && v.cuota_compromiso >= hoy ? 'Asegura el cobro ese día.' : '¿Cuándo paga? Recuerda que sin ese pago la venta no cuenta para tu meta.',
     ].filter(Boolean).join(' ')
   }
 
@@ -71,7 +76,7 @@ export default function Cobros({ cobros, recargar, perfiles, nombreDe, cfg, rol 
         <h2>Primera mensualidad</h2>
         <div className="kpis">
           <div className="kpi"><span>Por confirmar</span><b>{porConfirmar.length}</b><small>El asesor avisó que ya pagó</small></div>
-          <div className="kpi"><span>Sin pagar</span><b>{pendientes.length}</b><small>{atrasadas.length} con {alerta} días o más</small></div>
+          <div className="kpi"><span>Sin pagar</span><b>{pendientes.length}</b><small>{atrasadas.length} vencidas · {paraHoy.length} pagan hoy</small></div>
           <div className="kpi"><span>Por entrar a caja</span><b>{soles(porCobrar)}</b><small>Si se cobra todo lo pendiente</small></div>
         </div>
         {fallo && <p className="aviso aviso--crit">{fallo}</p>}
@@ -127,10 +132,10 @@ export default function Cobros({ cobros, recargar, perfiles, nombreDe, cfg, rol 
 
       <section>
         <h2>Sin pagar</h2>
-        <p className="small muted">Primero las más antiguas. Recuérdaselo al asesor: él es quien cobra al {contacto}.</p>
+        <p className="small muted">Primero las que vencen antes. Recuérdaselo al asesor: él es quien cobra al {contacto}.</p>
         <ul className="lista">
           {pendientes.map((v) => {
-            const dias = diasEntre(v.fecha, hoy)
+            const e = estadoCompromiso(v, hoy, alerta)
             const telefono = telefonoDe(v.asesor_id)
             const recordado = v.cuota_recordada_en ? fechaCorta(String(v.cuota_recordada_en).slice(0, 10)) : ''
             return (
@@ -139,11 +144,16 @@ export default function Cobros({ cobros, recargar, perfiles, nombreDe, cfg, rol 
                   <span>
                     {titulo(v.nombre)}
                     <small>{[nombreDe(v.asesor_id), v.lugar, v.celular ? 'cel. ' + v.celular : ''].filter(Boolean).join(' · ')}</small>
+                    <small>
+                      Vendido el {fechaCorta(v.fecha)}
+                      {v.cuota_compromiso ? ` · compromiso de pago: ${fechaCorta(v.cuota_compromiso)}` : ' · sin fecha de pago'}
+                      {v.cuota_reprogramaciones > 0 ? ` · fecha cambiada ${v.cuota_reprogramaciones} ${v.cuota_reprogramaciones === 1 ? 'vez' : 'veces'}` : ''}
+                    </small>
                     {v.cuota_nota && <small>Nota: {v.cuota_nota}</small>}
                     {!cumpleCondiciones(v, cfg) && <small>Ojo: no es nombrado con planilla. Aunque pague, queda por revisar.</small>}
                     {recordado && <small>Recordado al asesor el {recordado}</small>}
                   </span>
-                  <span className={`pill ${dias >= alerta ? 'crit' : 'warn'}`}>{dias === 0 ? 'Hoy' : `${dias} ${dias === 1 ? 'día' : 'días'}`}</span>
+                  <span className={`pill ${e.clase}`}>{e.texto}</span>
                 </div>
                 {puedeEditar && abierta !== v.id && (
                   <div className="acciones">
