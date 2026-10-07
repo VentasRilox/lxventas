@@ -10,11 +10,12 @@ import { BASICO, MOTIVOS, bonoSupervisor, esCaida, esValida, estadoAvance, estad
 import PantallaEstado from '../components/PantallaEstado.jsx'
 import Cobros from './panel/Cobros.jsx'
 import Asistencia from './panel/Asistencia.jsx'
+import Registros from './panel/Registros.jsx'
 
 const TABS = {
-  supervisor: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['asesores', 'Mi equipo'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento']],
-  jefe: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['supervisores', 'Supervisores'], ['asesores', 'Asesores'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
-  gerencia: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['supervisores', 'Supervisores'], ['ventas', 'Ventas'], ['dinero', 'Dinero']],
+  supervisor: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['asesores', 'Mi equipo'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento']],
+  jefe: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['supervisores', 'Supervisores'], ['asesores', 'Asesores'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
+  gerencia: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['supervisores', 'Supervisores'], ['ventas', 'Ventas'], ['dinero', 'Dinero']],
 }
 
 function Pill({ e }) {
@@ -411,6 +412,10 @@ export default function Panel() {
 
           {actual === 'asistencia' && (
             <Asistencia desde={C.desde} hasta={C.hasta} diaInicial={C.ref} asesores={C.asesores} nombreZona={(a) => nombreZona(C.zona, a)} cfg={cfg} />
+          )}
+
+          {actual === 'registros' && (
+            <Registros visitas={C.visitasPeriodo} prospectos={seguimiento.prospectos} desde={C.desde} hasta={C.hasta} nombreDe={nombreDe} cfg={cfg} />
           )}
 
           {actual === 'seguimiento' && (

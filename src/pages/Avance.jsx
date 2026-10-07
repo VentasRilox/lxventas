@@ -53,6 +53,7 @@ export default function Avance() {
       contactos: hoyVis.reduce((s, v) => s + v.contactos, 0),
       movilidad: hoyVis.reduce((s, v) => s + v.movilidad_centimos, 0),
       volver: Object.values(ultima).filter((v) => !v.con_ingreso),
+      visitasPeriodo: misVisitas.slice().reverse(),
     }
   }, [visitas, ventas, perfil.id, cfg, hoy])
 
@@ -128,7 +129,7 @@ export default function Avance() {
             <li key={v.id}>
               <span>
                 Visita · {v.lugar}
-                <small>{titulo(v.resultado)}</small>
+                <small>{[titulo(v.resultado), v.con_ingreso && `${v.contactos} ${v.contactos === 1 ? 'atendido' : 'atendidos'}`, `movilidad ${soles(v.movilidad_centimos)}`].filter(Boolean).join(' · ')}</small>
               </span>
               <button type="button" className="btn btn--sec btn--chico" onClick={() => quitar('visitas', v.id)}>
                 {quitando === v.id ? '¿Seguro?' : 'Quitar'}
@@ -153,6 +154,29 @@ export default function Avance() {
         <a className="btn btn--sec" href={enlaceWhatsApp(resumen)} target="_blank" rel="noopener noreferrer">
           Enviar resumen del día por WhatsApp
         </a>
+      </section>
+
+      {r.movilidad > 2500 && <p className="aviso">Tu movilidad de hoy suma {soles(r.movilidad)}. El tope es S/ 25 por día.</p>}
+      <p className="small muted">
+        "Atendidos" y "movilidad" salen de lo que escribiste en cada visita de hoy. Si un número está mal, quita esa visita y regístrala de nuevo.
+      </p>
+
+      <section>
+        <h2>Colegios visitados en el periodo · {r.visitasPeriodo.length}</h2>
+        <ul className="lista">
+          {r.visitasPeriodo.map((v) => (
+            <li key={v.id}>
+              <span>
+                {v.lugar}
+                <small>
+                  {[fechaCorta(v.fecha), titulo(v.resultado), v.con_ingreso && `${v.contactos} ${v.contactos === 1 ? 'atendido' : 'atendidos'}`, `movilidad ${soles(v.movilidad_centimos)}`].filter(Boolean).join(' · ')}
+                </small>
+              </span>
+            </li>
+          ))}
+          {r.visitasPeriodo.length === 0 && <li><span className="muted">Aún no registras visitas en este periodo.</span></li>}
+        </ul>
+        <Link className="small" to="/seguimiento">Ver a todas las personas que registraste, en Cartera</Link>
       </section>
 
       <section>

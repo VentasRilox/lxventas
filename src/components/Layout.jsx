@@ -4,6 +4,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { pendientes, vaciarCola } from '../lib/cola'
 import { fechaLocalHoy } from '../lib/fecha'
+import AvisoVersion from './AvisoVersion.jsx'
 
 const ROLES = { asesor: 'Asesor', supervisor: 'Supervisor', jefe: 'Jefe de ventas', gerencia: 'Gerencia' }
 
@@ -71,6 +72,8 @@ export default function Layout() {
           </button>
         )}
       </header>
+
+      <AvisoVersion />
 
       {porSubir > 0 && (
         <button type="button" className="aviso" style={{ border: 0, borderRadius: 0, textAlign: 'left', cursor: 'pointer' }} onClick={() => vaciarCola()}>
