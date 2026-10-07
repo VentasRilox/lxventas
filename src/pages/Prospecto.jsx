@@ -60,7 +60,9 @@ export default function Prospecto() {
           })
         : ''
     )
-    setProxima(sumarDias(fechaLocalHoy(), diasSegunInteres(p.interes, cfg)))
+    // Si ya hay una fecha futura acordada para volver a llamar, se respeta.
+    const acordada = p.proximo_contacto && p.proximo_contacto > fechaLocalHoy() ? p.proximo_contacto : null
+    setProxima(acordada ?? sumarDias(fechaLocalHoy(), diasSegunInteres(p.interes, cfg)))
   }, [p, plantillas, cfg, perfil.nombre])
 
   if (cargando) return <PantallaEstado mensaje="Cargando..." />
@@ -126,7 +128,7 @@ export default function Prospecto() {
   return (
     <main className="contenido contenido--angosto">
       <Link to="/seguimiento" className="small">
-        ← Volver a la lista
+        ← Volver a la cartera
       </Link>
       <div>
         <h1>{titulo(p.nombre)}</h1>
@@ -178,7 +180,7 @@ export default function Prospecto() {
           </label>
           {p.paso < ULTIMO_PASO && (
             <label htmlFor="proxima">
-              Próximo contacto
+              ¿Cuándo lo vuelves a llamar?
               <input id="proxima" type="date" value={proxima} min={hoy} onChange={(e) => setProxima(e.target.value || proxima)} />
             </label>
           )}

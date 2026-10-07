@@ -54,13 +54,13 @@ export default function Hoy() {
         })}
         {tocan.length === 0 && (
           <li>
-            <span className="muted">Cuando registres a un {contacto} interesado, aparecerá aquí el día que toque escribirle.</span>
+            <span className="muted">Cuando registres a un {contacto} interesado, aparecerá aquí el día que toque llamarlo.</span>
           </li>
         )}
       </ul>
 
-      <Link to="/seguimiento/nuevo" className="btn">
-        Registrar un {contacto} interesado
+      <Link to="/docente" className="btn">
+        Registrar un {contacto}
       </Link>
 
       {proximos.length > 0 && (

@@ -44,7 +44,8 @@ export default function App() {
               <Route path="/visita" element={<Visita />} />
               <Route path="/venta" element={<Venta />} />
               <Route path="/seguimiento" element={<Seguimiento />} />
-              <Route path="/seguimiento/nuevo" element={<NuevoProspecto />} />
+              <Route path="/docente" element={<NuevoProspecto />} />
+              <Route path="/seguimiento/nuevo" element={<Navigate to="/docente" replace />} />
               <Route path="/seguimiento/importar" element={<ImportarProspectos />} />
               <Route path="/seguimiento/:id" element={<Prospecto />} />
               <Route path="/avance" element={<Avance />} />

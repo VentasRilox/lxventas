@@ -34,9 +34,9 @@ export default function Seguimiento() {
   return (
     <main className="contenido contenido--angosto">
       <div className="fila">
-        <h1>{contacto}s en seguimiento</h1>
-        <Link to="/seguimiento/nuevo" className="btn btn--chico">
-          Nuevo
+        <h1>Cartera de {contacto.toLowerCase()}s</h1>
+        <Link to="/docente" className="btn btn--chico">
+          Registrar
         </Link>
       </div>
       <Link to="/seguimiento/importar" className="small">
@@ -60,7 +60,7 @@ export default function Seguimiento() {
               {titulo(p.nombre)}
               <small>
                 {[p.lugar, titulo(p.condicion), rol !== 'asesor' && p.asesor_id !== perfil.id && 'de otro asesor'].filter(Boolean).join(' · ')}
-                {p.estado === 'abierto' && p.proximo_contacto && ` · contactar el ${fechaCorta(p.proximo_contacto)}`}
+                {p.estado === 'abierto' && p.proximo_contacto && ` · llamar el ${fechaCorta(p.proximo_contacto)}`}
               </small>
             </Link>
             {p.estado === 'abierto' && p.proximo_contacto && p.proximo_contacto <= hoy ? (
@@ -74,7 +74,7 @@ export default function Seguimiento() {
           <li>
             <span className="muted">
               {estado === 'abierto'
-                ? `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra con "Nuevo" a cada interesado que no cerró en la visita.`
+                ? `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra a cada ${contacto.toLowerCase()} con el que hables y marca "Quedó interesado".`
                 : 'No hay nadie en esta lista.'}
             </span>
           </li>

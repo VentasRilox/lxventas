@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useLocation, useSearchParams } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
@@ -36,7 +36,9 @@ export default function Venta() {
   const prospectoId = parametros.get('prospecto')
   const ventaId = parametros.get('id')
   const [original, setOriginal] = useState(null)
-  const [f, setF] = useState(vacio)
+  const llegada = useLocation().state?.datos
+  // Si viene de registrar a la persona, sus datos ya llegan puestos.
+  const [f, setF] = useState(() => (llegada ? { ...vacio(), nombre: llegada.nombre ?? '', celular: llegada.celular ?? '', lugar: llegada.lugar ?? '', condicion: llegada.condicion ?? '' } : vacio()))
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState(null)
   const [guardada, setGuardada] = useState(null)
@@ -354,8 +356,13 @@ export default function Venta() {
         </section>
       )}
 
+      {guardada && (
+        <Link className="btn btn--sec" to="/docente">
+          Registrar a otra persona
+        </Link>
+      )}
       <button type="button" className="enlace" onClick={otra}>
-        Empezar otra venta
+        Limpiar y empezar otra venta
       </button>
     </main>
   )

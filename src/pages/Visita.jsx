@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
@@ -27,6 +28,7 @@ export default function Visita() {
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState(null)
   const [verDatos, setVerDatos] = useState(null)
+  const [guardado, setGuardado] = useState(null)
 
   const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
   const contactoNombre = cfg?.nombre_contacto ?? 'Contacto'
@@ -102,6 +104,7 @@ export default function Visita() {
       return false
     }
     setLugares((antes) => ({ ...antes, [lugar]: fila }))
+    setGuardado(sin ? null : lugar)
     setAviso(['ok', r.pendiente ? 'Sin señal: la visita quedó guardada en el celular y se subirá sola.' : 'Visita guardada.'])
     return true
   }
@@ -117,6 +120,7 @@ export default function Visita() {
   function otra() {
     setF(vacio((parseInt(f.numero, 10) || 0) + 1))
     setAviso(null)
+    setGuardado(null)
     setVerDatos(null)
     window.scrollTo(0, 0)
   }
@@ -191,6 +195,12 @@ export default function Visita() {
 
       {falta.length > 0 && <p className="aviso">Falta: {falta.join(', ')}.</p>}
       {aviso && <p className={`aviso aviso--${aviso[0]}`}>{aviso[1]}</p>}
+
+      {guardado && (
+        <Link className="btn" to={`/docente?lugar=${encodeURIComponent(guardado)}`}>
+          Ahora registra a los {contactoNombre.toLowerCase()}s de este {lugarNombre.toLowerCase()}
+        </Link>
+      )}
 
       <div className="acciones acciones--fijas">
         <button type="button" className="btn" disabled={guardando || falta.length > 0} onClick={enviar}>

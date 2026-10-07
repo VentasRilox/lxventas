@@ -31,6 +31,10 @@ Alta de una empresa nueva: crear el usuario en Authentication y ejecutar en el S
 
 Los usuarios del equipo se crean desde la pantalla Equipo, que llama a la Edge Function `crear-usuario` (única pieza con la llave secreta). Los accesos se crean como `usuario@dominio`: el dominio es `configuracion.dominio_correo` de la empresa o, si no tiene, `lxventas.com`. En el ingreso se puede escribir el correo completo o solo el usuario.
 
+## Flujo del asesor
+
+Cada persona se registra una sola vez, en `/docente` (pantalla `NuevoProspecto.jsx`). Ahí se marca qué pasó: **compró** (sigue a `/venta` con sus datos ya puestos), **quedó interesado** (entra a la cartera con la fecha para volver a llamarlo) o **no le interesa** (queda anotado con su motivo). La venta no está en el menú: se llega desde ese registro o desde la ficha de alguien en cartera. Al guardar una visita con ingreso, la app ofrece registrar a las personas de ese lugar.
+
 ## Reglas que no se negocian
 
 - Dinero en enteros de céntimos (`_centimos`).
