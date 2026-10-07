@@ -376,7 +376,7 @@ export default function Panel() {
               <div className="tabla">
                 <table>
                   <thead>
-                    <tr><th>Fecha</th><th>{contacto}</th><th>{cfg?.nombre_lugar ?? 'Lugar'}</th><th>Asesor</th><th>Programa</th><th>Estado</th><th>Contrato</th>{rol !== 'gerencia' && <th></th>}</tr>
+                    <tr><th>Fecha</th><th>{contacto}</th><th>{cfg?.nombre_lugar ?? 'Lugar'}</th><th>Asesor</th><th>Programa</th><th>Estado</th>{cfg?.pide_contrato && <th>Contrato</th>}{rol !== 'gerencia' && <th></th>}</tr>
                   </thead>
                   <tbody>
                     {C.ventasPeriodo.slice().reverse().map((v) => (
@@ -387,7 +387,7 @@ export default function Panel() {
                         <td>{nombreDe(v.asesor_id)}</td>
                         <td>{titulo(v.programa)}</td>
                         <td><Pill e={estadoVenta(v, cfg)} /></td>
-                        <td>{esCaida(v) ? '–' : faltaContrato(v).length ? <span title={faltaContrato(v).join(', ')}>Faltan {faltaContrato(v).length}</span> : 'Completo'}</td>
+                        {cfg?.pide_contrato && <td>{esCaida(v) ? '–' : faltaContrato(v).length ? <span title={faltaContrato(v).join(', ')}>Faltan {faltaContrato(v).length}</span> : 'Completo'}</td>}
                         {rol !== 'gerencia' && (
                           <td>
                             <button type="button" className="btn btn--sec btn--chico" onClick={() => marcarCaida(v)}>

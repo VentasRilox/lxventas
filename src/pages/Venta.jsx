@@ -121,6 +121,9 @@ export default function Venta() {
     profesion: mayus(f.profesion),
     ...Object.fromEntries(DOCUMENTOS.map(([campo, etiqueta]) => [campo, f.documentos.includes(etiqueta)])),
   }
+  // Los datos del contrato solo se piden si la empresa lo activa; si no, el
+  // contrato se sigue llenando en papel.
+  const pideContrato = Boolean(cfg?.pide_contrato)
   const pendienteContrato = faltaContrato({ ...contrato, celular, correo: f.correo.trim(), desempeno: mayus(f.desempeno) })
 
   async function guardar() {
@@ -135,7 +138,7 @@ export default function Venta() {
       idem_key: `${perfil.id}|S|${f.fecha}|${dni}`,
       fecha: f.fecha,
       hora: f.hora,
-      ...contrato,
+      ...(pideContrato ? contrato : {}),
       nombre: mayus(f.nombre),
       dni,
       celular,
@@ -234,6 +237,7 @@ export default function Venta() {
         {f.condicion !== '' && !['NOMBRADO', 'CONTRATADO'].includes(mayus(f.condicion)) && <Campo etiqueta="Otra condición" nombre="condicion" f={f} setF={setF} />}
       </section>
 
+      {pideContrato && (
       <details className="plegable" open={Boolean(ventaId) || undefined}>
         <summary>Datos para el contrato{pendienteContrato.length ? ` · faltan ${pendienteContrato.length} (se pueden completar después)` : ' · completo'}</summary>
         <div className="grid2">
@@ -252,6 +256,7 @@ export default function Venta() {
           <p className="small muted">Falta: {pendienteContrato.join(', ')}. Puedes guardar la venta ahora y completarlo después en "Mi avance".</p>
         )}
       </details>
+      )}
 
       <section>
         <h2>Pago</h2>

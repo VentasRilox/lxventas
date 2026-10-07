@@ -157,7 +157,7 @@ export default function Avance() {
               <span>
                 {titulo(v.nombre)}
                 <small>{[titulo(v.programa), titulo(v.pago), fechaCorta(v.fecha)].filter(Boolean).join(' · ')}</small>
-                {v.estado !== 'caida' && (
+                {cfg?.pide_contrato && v.estado !== 'caida' && (
                   <small>
                     {faltaContrato(v).length ? <Link to={`/venta?id=${v.id}`}>Contrato incompleto: completar datos</Link> : 'Contrato completo'}
                   </small>
