@@ -19,6 +19,22 @@ export function usuarioACorreo(usuario) {
   return u.includes('@') ? u : `${u}@${DOMINIO_USUARIOS}`
 }
 
+// Usuario sugerido a partir del nombre: inicial del primer nombre y primer
+// apellido, sin tildes. "Omar Aguilar" → "oaguilar".
+export function usuarioSugerido(nombre) {
+  const palabras = String(nombre ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z\s]/g, '')
+    .split(/\s+/)
+    .filter(Boolean)
+  if (palabras.length < 2) return palabras[0] ?? ''
+  // Con cuatro palabras o más se asume dos nombres y dos apellidos.
+  const apellido = palabras.length >= 4 ? palabras[palabras.length - 2] : palabras[1]
+  return palabras[0][0] + apellido
+}
+
 // Trae todas las filas de una consulta, de mil en mil (el tope por pedido).
 export async function traerTodo(armarConsulta) {
   const filas = []

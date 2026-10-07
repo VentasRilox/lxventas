@@ -1,8 +1,10 @@
 import { useState } from 'react'
 import { Navigate, useLocation, useNavigate } from 'react-router-dom'
-import { supabase, usuarioACorreo } from '../lib/supabase'
+import { supabase, usuarioACorreo, DOMINIO_USUARIOS } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { useSesion } from '../lib/SesionProvider.jsx'
+
+const CLAVE_DOMINIO = 'lxv_dominio'
 
 export default function Login() {
   const { sesion } = useSesion()
@@ -21,10 +23,30 @@ export default function Login() {
     evento.preventDefault()
     setError('')
     setEnviando(true)
-    const { error: errorLogin } = await supabase.auth.signInWithPassword({
-      email: usuarioACorreo(usuario),
-      password: contrasena,
-    })
+    // Quien escribe solo su usuario: se prueba primero con el dominio con el
+    // que ya se entró en este celular y luego con el general.
+    const u = usuario.trim().toLowerCase()
+    let recordado = ''
+    try {
+      recordado = localStorage.getItem(CLAVE_DOMINIO) ?? ''
+    } catch {
+      recordado = ''
+    }
+    const correos = u.includes('@') ? [u] : [...new Set([recordado && `${u}@${recordado}`, usuarioACorreo(u)].filter(Boolean))]
+    let errorLogin = null
+    for (const correo of correos) {
+      const r = await supabase.auth.signInWithPassword({ email: correo, password: contrasena })
+      errorLogin = r.error
+      if (!errorLogin) {
+        const dominio = correo.split('@')[1]
+        try {
+          if (dominio && dominio !== DOMINIO_USUARIOS) localStorage.setItem(CLAVE_DOMINIO, dominio)
+        } catch {
+          // Si no se puede recordar, la próxima vez escribe el correo completo.
+        }
+        break
+      }
+    }
     if (errorLogin) {
       setError(traducirError(errorLogin))
       setEnviando(false)
@@ -44,8 +66,8 @@ export default function Login() {
         </div>
 
         <label htmlFor="usuario">
-          Usuario
-          <input id="usuario" autoComplete="username" autoCapitalize="none" autoCorrect="off" required value={usuario} onChange={(e) => setUsuario(e.target.value)} />
+          Usuario o correo
+          <input id="usuario" autoComplete="username" placeholder="ej.: oaguilar@marketing.com" autoCapitalize="none" autoCorrect="off" required value={usuario} onChange={(e) => setUsuario(e.target.value)} />
         </label>
 
         <label htmlFor="contrasena">

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useSesion } from '../lib/SesionProvider.jsx'
-import { supabase, DOMINIO_USUARIOS } from '../lib/supabase'
+import { supabase, DOMINIO_USUARIOS, usuarioSugerido } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { mayus, titulo } from '../lib/reglas'
 import Campo from '../components/Campo.jsx'
@@ -38,6 +38,12 @@ export default function Equipo() {
   const [clave, setClave] = useState(null)
   const [ocupado, setOcupado] = useState(false)
   const nz = cfg?.nombre_zona ?? 'Zona'
+  const dominio = cfg?.dominio_correo || DOMINIO_USUARIOS
+  // Quien escribe solo el usuario recibe el dominio de la empresa.
+  const correoDe = (usuario) => {
+    const u = String(usuario ?? '').trim().toLowerCase()
+    return !u || u.includes('@') ? u : `${u}@${dominio}`
+  }
 
   const cargar = useCallback(async () => {
     const { data, error } = await supabase.from('perfiles').select('*').order('rol').order('nombre')
@@ -59,7 +65,7 @@ export default function Equipo() {
     const r = await llamarFuncion({
       accion: 'crear',
       nombre: mayus(nuevo.nombre),
-      usuario: nuevo.usuario.trim().toLowerCase(),
+      usuario: correoDe(nuevo.usuario),
       rol: nuevo.rol,
       zona_id: nuevo.rol === 'asesor' ? nuevo.zona_id || null : null,
       meta_mensual: nuevo.rol === 'asesor' ? parseInt(nuevo.meta_mensual, 10) || 0 : 0,
@@ -70,7 +76,7 @@ export default function Equipo() {
       setAviso(['crit', r.error])
       return
     }
-    setClave({ usuario: nuevo.usuario.trim().toLowerCase(), contrasena: r.data.contrasena_temporal, nombre: mayus(nuevo.nombre) })
+    setClave({ usuario: correoDe(nuevo.usuario), contrasena: r.data.contrasena_temporal, nombre: mayus(nuevo.nombre) })
     setNuevo({ ...nuevo, nombre: '', usuario: '', telefono: '' })
     cargar()
   }
@@ -278,8 +284,12 @@ export default function Equipo() {
       <section>
         <h2>{esJefe ? 'Agregar una persona' : 'Agregar un asesor'}</h2>
         <form className="grid2" onSubmit={crear}>
-          <Campo etiqueta="Nombre completo" nombre="nombre" f={nuevo} setF={setNuevo} full required autoComplete="off" />
-          <Campo etiqueta="Usuario para entrar (sin espacios)" nombre="usuario" f={nuevo} setF={setNuevo} required autoCapitalize="none" autoComplete="off" pattern="[A-Za-z0-9._@\-]+" placeholder="ej.: milton" />
+          <Campo etiqueta="Nombre completo" nombre="nombre" f={nuevo} setF={setNuevo} full required autoComplete="off" onBlur={() => setNuevo((antes) => (antes.usuario ? antes : { ...antes, usuario: usuarioSugerido(antes.nombre) }))} />
+          <label htmlFor="c_usuario">
+            Usuario para entrar (sin espacios)
+            <input id="c_usuario" value={nuevo.usuario} onChange={(e) => setNuevo({ ...nuevo, usuario: e.target.value })} required autoCapitalize="none" autoComplete="off" pattern="[A-Za-z0-9._@\-]+" placeholder="ej.: oaguilar" />
+            {nuevo.usuario.trim() && <small className="muted">Entrará con: <b>{correoDe(nuevo.usuario)}</b></small>}
+          </label>
           <label htmlFor="n_rol">
             Rol
             <select id="n_rol" value={nuevo.rol} onChange={(e) => setNuevo({ ...nuevo, rol: e.target.value })}>

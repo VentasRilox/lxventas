@@ -23,13 +23,13 @@ Igual que LX Cobros: React + Vite (JavaScript), Supabase (Postgres, Auth, RLS, E
 
 ## Base de datos
 
-Definida en `migraciones/` (se ejecutan en orden: 001, 002, 003, 004). Tablas: `empresas`, `zonas`, `perfiles`, `configuracion`, `visitas`, `ventas`, `prospectos`, `contactos`, `plantillas`, `asistencias`.
+Definida en `migraciones/` (se ejecutan en orden: 001, 002, 003, 004, 005). Tablas: `empresas`, `zonas`, `perfiles`, `configuracion`, `visitas`, `ventas`, `prospectos`, `contactos`, `plantillas`, `asistencias`.
 
 Funciones de sesión: `mi_perfil()`, `mi_empresa()`, `mi_rol()`, `mi_zona()`, `veo_zona(uuid)`. El trigger `sellar_registro` pone empresa, asesor y zona al insertar: el cliente no puede falsearlos.
 
 Alta de una empresa nueva: crear el usuario en Authentication y ejecutar en el SQL Editor `select public.instalar_empresa('Empresa', 'correo', 'Nombre del jefe');`.
 
-Los usuarios del equipo se crean desde la pantalla Equipo, que llama a la Edge Function `crear-usuario` (única pieza con la llave secreta). Un usuario sin correo entra como `usuario@lxventas.com`.
+Los usuarios del equipo se crean desde la pantalla Equipo, que llama a la Edge Function `crear-usuario` (única pieza con la llave secreta). Los accesos se crean como `usuario@dominio`: el dominio es `configuracion.dominio_correo` de la empresa o, si no tiene, `lxventas.com`. En el ingreso se puede escribir el correo completo o solo el usuario.
 
 ## Reglas que no se negocian
 

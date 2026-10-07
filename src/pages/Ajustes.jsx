@@ -54,6 +54,7 @@ export default function Ajustes() {
         primera_cuota_centimos: Math.round((parseFloat(f.primera_cuota) || 0) * 100),
         hora_tolerancia: /^\d{2}:\d{2}$/.test(f.hora_tolerancia ?? '') ? f.hora_tolerancia : '08:15',
         dias_alerta_cuota: entero(f.dias_alerta_cuota, 3),
+        dominio_correo: String(f.dominio_correo ?? '').trim().toLowerCase().replace(/^@/, '') || null,
       })
       .eq('empresa_id', cfg.empresa_id)
     let fallo = error
@@ -87,6 +88,10 @@ export default function Ajustes() {
           <Campo etiqueta="Días sin pago para alertar" nombre="dias_alerta_cuota" f={f} setF={setF} inputMode="numeric" />
           <Campo etiqueta="Ingreso a tiempo hasta las" nombre="hora_tolerancia" f={f} setF={setF} type="time" />
         </div>
+
+        <h2>Accesos del equipo</h2>
+        <Campo etiqueta="Dominio de los correos (ej.: marketing.com)" nombre="dominio_correo" f={f} setF={setF} autoCapitalize="none" autoComplete="off" placeholder="lxventas.com" />
+        <p className="small muted">Los accesos nuevos se crean como usuario@dominio. Los que ya existen no cambian.</p>
 
         <h2>Cómo llama tu empresa a cada cosa</h2>
         <div className="grid2">
