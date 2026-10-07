@@ -1,18 +1,20 @@
 import { useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
-import { useMes } from '../lib/useDatos'
+import { useRango } from '../lib/useDatos'
 import { traducirError } from '../lib/errores'
-import { diaSemana, diasHabiles, fechaCorta, fechaLocalHoy, fechaMensaje, finDeMes, mesDe } from '../lib/fecha'
-import { esValida, estadoVenta, faltaPago, mayus, soles, titulo } from '../lib/reglas'
+import { diaSemana, diasHabiles, fechaCorta, fechaLocalHoy, fechaMensaje } from '../lib/fecha'
+import { periodoDe, textoPeriodo } from '../lib/periodo'
+import { esValida, estadoVenta, faltaContrato, faltaPago, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp } from '../lib/mensajes'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
 export default function Avance() {
-  const { perfil, cfg } = useSesion()
+  const { perfil, cfg, zona } = useSesion()
   const hoy = fechaLocalHoy()
-  const mes = mesDe(hoy)
-  const { visitas, ventas, cargando, error, recargar } = useMes(mes)
+  const periodo = periodoDe(zona?.fecha_apertura, hoy)
+  const { visitas, ventas, cargando, error, recargar } = useRango(periodo.trae, periodo.hasta)
   const [quitando, setQuitando] = useState(null)
   const [fallo, setFallo] = useState('')
 
@@ -40,9 +42,9 @@ export default function Avance() {
   if (cargando) return <PantallaEstado mensaje="Cargando..." />
 
   const meta = perfil.meta_mensual || 20
-  const fin = finDeMes(mes)
-  const avance = diasHabiles(`${mes}-01`, hoy) / Math.max(1, diasHabiles(`${mes}-01`, fin))
-  const quedan = diasHabiles(hoy, fin)
+  const inicio = hoy < periodo.desde ? periodo.desde : hoy
+  const avance = hoy < periodo.desde ? 0 : diasHabiles(periodo.desde, hoy) / Math.max(1, diasHabiles(periodo.desde, periodo.hasta))
+  const quedan = diasHabiles(inicio, periodo.hasta)
   const faltan = Math.max(0, meta - r.validas)
   const contacto = (cfg?.nombre_contacto ?? 'Contacto').toLowerCase()
 
@@ -54,7 +56,7 @@ export default function Avance() {
     'DOCENTES CONVERSADOS: ' + r.contactos,
     'VENTAS DE HOY: ' + r.ventasHoy.length,
     'MOVILIDAD: ' + Math.round(r.movilidad / 100),
-    'VENTAS DEL MES: ' + r.validas + ' DE ' + meta,
+    'VENTAS DEL PERIODO: ' + r.validas + ' DE ' + meta,
     mayus(cfg?.firma),
   ].join('\n')
 
@@ -75,7 +77,7 @@ export default function Avance() {
       {(error || fallo) && <p className="aviso aviso--crit">{error || fallo}</p>}
 
       <section>
-        <h2>Mi meta del mes</h2>
+        <h2>Mi meta · {textoPeriodo(periodo)}</h2>
         <div className="grande">
           {r.validas} <small>/ {meta} ventas</small>
         </div>
@@ -143,23 +145,28 @@ export default function Avance() {
               </span>
             </li>
           ))}
-          {r.volver.length === 0 && <li><span className="muted">Ninguno pendiente este mes.</span></li>}
+          {r.volver.length === 0 && <li><span className="muted">Ninguno pendiente en este periodo.</span></li>}
         </ul>
       </section>
 
       <section>
-        <h2>Mis ventas del mes</h2>
+        <h2>Mis ventas del periodo</h2>
         <ul className="lista">
           {r.ventasMes.map((v) => (
             <li key={v.id}>
               <span>
                 {titulo(v.nombre)}
                 <small>{[titulo(v.programa), titulo(v.pago), fechaCorta(v.fecha)].filter(Boolean).join(' · ')}</small>
+                {v.estado !== 'caida' && (
+                  <small>
+                    {faltaContrato(v).length ? <Link to={`/venta?id=${v.id}`}>Contrato incompleto: completar datos</Link> : 'Contrato completo'}
+                  </small>
+                )}
               </span>
               <span className={`pill ${estadoVenta(v, cfg)[0]}`}>{estadoVenta(v, cfg)[1]}</span>
             </li>
           ))}
-          {r.ventasMes.length === 0 && <li><span className="muted">Todavía no registras ventas este mes.</span></li>}
+          {r.ventasMes.length === 0 && <li><span className="muted">Todavía no registras ventas en este periodo.</span></li>}
         </ul>
       </section>
     </main>

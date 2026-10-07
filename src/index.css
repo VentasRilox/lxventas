@@ -159,6 +159,14 @@ tr.total td { font-weight: 700; background: var(--bg); }
 .tab[aria-pressed='true'] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
 .estado { min-height: 60dvh; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--muted); }
 
+/* ---------- Periodo del panel ---------- */
+.periodo { display: flex; align-items: center; gap: 10px; background: var(--surface); border: 1.5px solid var(--line); border-radius: 12px; padding: 8px 10px; }
+.periodo > div { flex: 1; text-align: center; min-width: 0; }
+.periodo b { display: block; font-family: var(--titulos); font-size: var(--t-lg); line-height: 1.2; }
+.periodo span { font-size: var(--t-xs); color: var(--muted); }
+.periodo .enlace { min-height: 0; padding: 0; font-size: var(--t-xs); }
+.periodo .btn { min-width: 44px; font-size: var(--t-lg); }
+
 /* ---------- Jornada y cobros ---------- */
 .jornada { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .jornada div { background: var(--bg); border-radius: 10px; padding: 10px 12px; }

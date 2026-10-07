@@ -188,6 +188,10 @@ export default function Equipo() {
                   Meta del mes
                   <input id={'zmeta_' + z.id} inputMode="numeric" defaultValue={z.meta_mensual} onBlur={(e) => { const n = parseInt(e.target.value, 10); if (!Number.isNaN(n) && n !== z.meta_mensual) editarZona(z, { meta_mensual: n }) }} />
                 </label>
+                <label className="full" htmlFor={'zabre_' + z.id}>
+                  Abre el (su mes de venta cuenta desde este día)
+                  <input id={'zabre_' + z.id} type="date" defaultValue={z.fecha_apertura ?? ''} onBlur={(e) => { const v = e.target.value || null; if (v !== (z.fecha_apertura ?? null)) editarZona(z, { fecha_apertura: v }) }} />
+                </label>
                 <label htmlFor={'zsup_' + z.id}>
                   Supervisor
                   <select id={'zsup_' + z.id} value={z.supervisor_id ?? ''} onChange={(e) => editarZona(z, { supervisor_id: e.target.value || null })}>
@@ -224,6 +228,12 @@ export default function Equipo() {
                 {p.rol === 'supervisor' && ` · ${nz}: ${zonas.filter((z) => z.supervisor_id === p.id).map((z) => titulo(z.nombre)).join(', ') || 'asígnala arriba'}`}
                 {p.rol === 'asesor' && !esJefe && ` · ${nz} ${titulo(zonas.find((z) => z.id === p.zona_id)?.nombre ?? '')} · meta ${p.meta_mensual}`}
               </p>
+              {esJefe && p.rol !== 'gerencia' && (
+                <label htmlFor={'tel_' + p.id}>
+                  Celular (para escribirle por WhatsApp)
+                  <input id={'tel_' + p.id} inputMode="numeric" maxLength={9} defaultValue={p.telefono ?? ''} onBlur={(e) => { const v = e.target.value.replace(/\D/g, ''); if (v !== (p.telefono ?? '')) editarPerfil(p, { telefono: v }) }} />
+                </label>
+              )}
               {p.rol === 'asesor' && esJefe && (
                 <div className="grid2">
                   <label htmlFor={'zona_' + p.id}>

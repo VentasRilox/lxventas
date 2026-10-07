@@ -1,16 +1,16 @@
 import { useMemo, useState } from 'react'
 import { useAsistencias } from '../../lib/useDatos'
-import { fechaCorta, finDeMes, horaCorta, horaDeMarca, minutosEntre } from '../../lib/fecha'
+import { fechaCorta, horaCorta, horaDeMarca, minutosEntre } from '../../lib/fecha'
 import { titulo } from '../../lib/reglas'
 import { enlaceMapa } from '../../lib/ubicacion'
 
 // Quién marcó ingreso y salida en un día, y cuántos días lleva cada asesor en
-// el mes. De aquí sale la planilla.
-export default function Asistencia({ mes, diaInicial, asesores, nombreZona, cfg }) {
+// el periodo. De aquí sale la planilla.
+export default function Asistencia({ desde, hasta, diaInicial, asesores, nombreZona, cfg }) {
   const [dia, setDia] = useState(diaInicial)
-  const { asistencias, cargando, error, recargar } = useAsistencias(`${mes}-01`, finDeMes(mes))
+  const { asistencias, cargando, error, recargar } = useAsistencias(desde, hasta)
   const tolerancia = cfg?.hora_tolerancia ?? '08:15'
-  const fecha = dia.slice(0, 7) === mes ? dia : diaInicial
+  const fecha = dia >= desde && dia <= hasta ? dia : diaInicial
 
   const { delDia, diasPorAsesor } = useMemo(() => {
     const porAsesor = {}
@@ -31,7 +31,7 @@ export default function Asistencia({ mes, diaInicial, asesores, nombreZona, cfg 
       <div className="fila" style={{ flexWrap: 'wrap' }}>
         <h2>Asistencia</h2>
         <div className="fila">
-          <input type="date" aria-label="Día" style={{ width: 'auto' }} value={fecha} min={`${mes}-01`} max={finDeMes(mes)} onChange={(e) => e.target.value && setDia(e.target.value)} />
+          <input type="date" aria-label="Día" style={{ width: 'auto' }} value={fecha} min={desde} max={hasta} onChange={(e) => e.target.value && setDia(e.target.value)} />
           <button type="button" className="btn btn--sec btn--chico" onClick={recargar}>
             {cargando ? 'Cargando…' : 'Actualizar'}
           </button>
@@ -58,7 +58,7 @@ export default function Asistencia({ mes, diaInicial, asesores, nombreZona, cfg 
               <div className="fila">
                 <span>
                   {titulo(a.nombre)}
-                  <small>{[titulo(nombreZona(a)), `${dias} ${dias === 1 ? 'día' : 'días'} en el mes`].filter(Boolean).join(' · ')}</small>
+                  <small>{[titulo(nombreZona(a)), `${dias} ${dias === 1 ? 'día' : 'días'} en el periodo`].filter(Boolean).join(' · ')}</small>
                 </span>
                 <span className={`pill ${!r?.hora_ingreso ? 'crit' : esTarde ? 'warn' : 'ok'}`}>{!r?.hora_ingreso ? 'Sin marcar' : esTarde ? 'Tarde' : 'A tiempo'}</span>
               </div>
@@ -81,7 +81,7 @@ export default function Asistencia({ mes, diaInicial, asesores, nombreZona, cfg 
         })}
         {activos.length === 0 && <li><span className="muted">Aún no hay asesores registrados.</span></li>}
       </ul>
-      <p className="small muted">Los días en el mes cuentan los días con ingreso marcado: es la base para la planilla. Lo marcado no lo puede cambiar el asesor.</p>
+      <p className="small muted">Los días del periodo son los que tienen ingreso marcado: son la base para la planilla. Lo marcado no lo puede cambiar el asesor.</p>
     </section>
   )
 }

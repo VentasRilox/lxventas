@@ -1,23 +1,20 @@
 import { useCallback, useEffect, useState } from 'react'
 import { supabase, traerTodo } from './supabase'
 import { traducirError } from './errores'
-import { finDeMes } from './fecha'
 
-// Visitas y ventas de un mes. El RLS decide qué filas ve cada rol.
-export function useMes(mes) {
+// Visitas y ventas entre dos fechas. El RLS decide qué filas ve cada rol.
+export function useRango(desde, hasta) {
   const [estado, setEstado] = useState({ visitas: [], ventas: [], cargando: true, error: '' })
 
   const cargar = useCallback(async () => {
     setEstado((e) => ({ ...e, cargando: true, error: '' }))
-    const desde = `${mes}-01`
-    const hasta = finDeMes(mes)
     const [vi, ve] = await Promise.all([
       traerTodo(() => supabase.from('visitas').select('*').gte('fecha', desde).lte('fecha', hasta).order('creado_en')),
       traerTodo(() => supabase.from('ventas').select('*').gte('fecha', desde).lte('fecha', hasta).order('creado_en')),
     ])
     const error = vi.error ?? ve.error
     setEstado({ visitas: vi.data ?? [], ventas: ve.data ?? [], cargando: false, error: error ? traducirError(error) : '' })
-  }, [mes])
+  }, [desde, hasta])
 
   useEffect(() => {
     cargar()

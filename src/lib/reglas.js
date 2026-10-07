@@ -71,6 +71,26 @@ export function montoCuota(venta, cfg) {
 
 export const MEDIOS_CUOTA = ['Yape', 'Cuenta de la empresa']
 
+// Datos que pide el contrato y documentos que firma el cliente.
+export const DATOS_CONTRATO = [
+  ['celular', 'celular'], ['correo', 'correo'], ['direccion', 'dirección'], ['distrito', 'distrito'], ['provincia', 'provincia'],
+  ['desempeno', 'puesto'], ['fecha_alta', 'fecha de alta'], ['sueldo_centimos', 'sueldo'], ['afp', 'AFP'], ['cuspp', 'código CUSPP'], ['profesion', 'profesión'],
+]
+
+export const DOCUMENTOS = [
+  ['doc_contrato', 'Contrato (doble cara)'],
+  ['doc_planilla', 'Descuento por planilla'],
+  ['doc_compromiso', 'Compromiso de pago'],
+  ['doc_dni', 'Foto del DNI'],
+]
+
+// Lo que le falta a una venta para tener el contrato completo.
+export function faltaContrato(venta) {
+  const datos = DATOS_CONTRATO.filter(([campo]) => venta[campo] === null || venta[campo] === undefined || venta[campo] === '').map((d) => d[1])
+  const documentos = DOCUMENTOS.filter(([campo]) => !venta[campo]).map((d) => d[1].toLowerCase())
+  return [...datos, ...documentos]
+}
+
 // Escala de pagos acordada (en soles). Hoy es fija; pasará a la configuración
 // de cada empresa cuando haya un segundo cliente con otra escala.
 export const BASICO = { asesor: 1230, supervisor: 1500 }
@@ -94,7 +114,7 @@ export function estadoAvance(valor, meta, avance) {
   if (!meta) return ['neu', 'Sin meta']
   if (valor >= meta) return ['ok', 'Meta cumplida']
   const esperado = meta * avance
-  if (esperado < 1) return ['neu', 'Inicio de mes']
+  if (esperado < 1) return ['neu', 'Recién empieza']
   if (valor >= esperado * 0.9) return ['ok', 'En ritmo']
   if (valor >= esperado * 0.6) return ['warn', 'Atrasada']
   return ['crit', 'Muy atrasada']

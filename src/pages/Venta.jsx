@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaLocalHoy, horaLocalAhora } from '../lib/fecha'
-import { MEDIOS_CUOTA, cumpleCondiciones, mayus, soles, titulo } from '../lib/reglas'
+import { DOCUMENTOS, MEDIOS_CUOTA, cumpleCondiciones, faltaContrato, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
 import Chips from '../components/Chips.jsx'
@@ -25,6 +25,7 @@ function vacio() {
     programa: recordado(CLAVE_PROGRAMA), estrategia: '', nombre: '', dni: '', celular: '', correo: '', lugar: '',
     desempeno: '', condicion: '', pago: '', suscripcion: '', beneficiario: '', observacion: '',
     cuota: '', cuota_medio: '', cuota_operacion: '',
+    direccion: '', distrito: '', provincia: '', fecha_alta: '', sueldo: '', afp: '', cuspp: '', profesion: '', documentos: [],
     fecha: fechaLocalHoy(), hora: horaLocalAhora(),
   }
 }
@@ -33,6 +34,8 @@ export default function Venta() {
   const { perfil, zona, cfg, plantillas } = useSesion()
   const [parametros, setParametros] = useSearchParams()
   const prospectoId = parametros.get('prospecto')
+  const ventaId = parametros.get('id')
+  const [original, setOriginal] = useState(null)
   const [f, setF] = useState(vacio)
   const [guardando, setGuardando] = useState(false)
   const [aviso, setAviso] = useState(null)
@@ -49,8 +52,8 @@ export default function Venta() {
   const falta = [
     !mayus(f.programa) && 'programa',
     !mayus(f.nombre) && 'nombre',
-    !f.cuota && 'indicar si ya pagó la primera mensualidad',
-    pagoHoy && !f.cuota_medio && 'por dónde pagó',
+    !ventaId && !f.cuota && 'indicar si ya pagó la primera mensualidad',
+    !ventaId && pagoHoy && !f.cuota_medio && 'por dónde pagó',
     dni.length !== 8 && 'DNI de 8 dígitos',
     celular && celular.length !== 9 && 'celular de 9 dígitos',
   ].filter(Boolean)
@@ -73,6 +76,53 @@ export default function Venta() {
     }
   }, [prospectoId])
 
+  // Si se abre una venta ya registrada, se cargan sus datos para completarla.
+  useEffect(() => {
+    if (!ventaId) return
+    let activo = true
+    supabase
+      .from('ventas')
+      .select('*')
+      .eq('id', ventaId)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!activo) return
+        if (error || !data) {
+          setAviso(['crit', error ? traducirError(error) : 'No se encontró esa venta.'])
+          return
+        }
+        setOriginal(data)
+        const texto = (v) => titulo(v ?? '')
+        setF({
+          ...vacio(),
+          programa: texto(data.programa), estrategia: texto(data.estrategia), nombre: texto(data.nombre), dni: data.dni ?? '', celular: data.celular ?? '',
+          correo: data.correo ?? '', lugar: data.lugar ?? '', desempeno: texto(data.desempeno), condicion: texto(data.condicion), pago: texto(data.pago),
+          suscripcion: texto(data.suscripcion), beneficiario: texto(data.beneficiario), observacion: texto(data.observacion),
+          fecha: data.fecha, hora: data.hora ?? '',
+          direccion: texto(data.direccion), distrito: texto(data.distrito), provincia: texto(data.provincia), fecha_alta: data.fecha_alta ?? '',
+          sueldo: data.sueldo_centimos != null ? String(data.sueldo_centimos / 100) : '', afp: texto(data.afp), cuspp: data.cuspp ?? '', profesion: texto(data.profesion),
+          documentos: DOCUMENTOS.filter(([campo]) => data[campo]).map((d) => d[1]),
+        })
+      })
+    return () => {
+      activo = false
+    }
+  }, [ventaId])
+
+  const sueldo = parseFloat(String(f.sueldo).replace(',', '.'))
+  const contrato = {
+    direccion: mayus(f.direccion),
+    distrito: mayus(f.distrito),
+    provincia: mayus(f.provincia),
+    fecha_alta: f.fecha_alta || null,
+    sueldo_centimos: Number.isNaN(sueldo) ? null : Math.round(sueldo * 100),
+    afp: mayus(f.afp),
+    cuspp: mayus(f.cuspp),
+    profesion: mayus(f.profesion),
+    ...Object.fromEntries(DOCUMENTOS.map(([campo, etiqueta]) => [campo, f.documentos.includes(etiqueta)])),
+  }
+  const pendienteContrato = faltaContrato({ ...contrato, celular, correo: f.correo.trim(), desempeno: mayus(f.desempeno) })
+
   async function guardar() {
     if (falta.length) return false
     setGuardando(true)
@@ -85,6 +135,7 @@ export default function Venta() {
       idem_key: `${perfil.id}|S|${f.fecha}|${dni}`,
       fecha: f.fecha,
       hora: f.hora,
+      ...contrato,
       nombre: mayus(f.nombre),
       dni,
       celular,
@@ -103,6 +154,15 @@ export default function Venta() {
       cuota_operacion: pagoHoy ? f.cuota_operacion.trim() : null,
       cuota_centimos: pagoHoy ? montoCuota : null,
       cuota_fecha: pagoHoy ? f.fecha : null,
+    }
+    if (ventaId) {
+      // Completar una venta ya registrada: no se tocan su dueño, su fecha ni su pago.
+      const cambios = { ...fila }
+      for (const campo of ['empresa_id', 'asesor_id', 'zona_id', 'prospecto_id', 'idem_key', 'fecha', 'hora', 'cuota_estado', 'cuota_medio', 'cuota_operacion', 'cuota_centimos', 'cuota_fecha']) delete cambios[campo]
+      const { error } = await supabase.from('ventas').update(cambios).eq('id', ventaId)
+      setGuardando(false)
+      setAviso(error ? ['crit', 'No se guardó: ' + traducirError(error)] : ['ok', 'Cambios guardados.'])
+      return !error
     }
     const r = await guardarRegistro('ventas', fila)
     if (!r.ok) {
@@ -135,7 +195,8 @@ export default function Venta() {
     setF(vacio())
     setAviso(null)
     setGuardada(null)
-    if (prospectoId) setParametros({}, { replace: true })
+    setOriginal(null)
+    if (prospectoId || ventaId) setParametros({}, { replace: true })
     window.scrollTo(0, 0)
   }
 
@@ -146,7 +207,8 @@ export default function Venta() {
 
   return (
     <main className="contenido contenido--angosto">
-      <h1>Cierre de venta</h1>
+      <h1>{ventaId ? 'Completar venta' : 'Cierre de venta'}</h1>
+      {ventaId && original && <p className="muted">Venta del {original.fecha.split('-').reverse().join('/')}. Completa lo que falte para el contrato y guarda.</p>}
 
       <section>
         <h2>Programa</h2>
@@ -172,6 +234,25 @@ export default function Venta() {
       </section>
 
       <section>
+        <h2>Datos para el contrato</h2>
+        <div className="grid2">
+          <Campo etiqueta="Dirección" nombre="direccion" f={f} setF={setF} full autoComplete="off" />
+          <Campo etiqueta="Distrito" nombre="distrito" f={f} setF={setF} autoComplete="off" />
+          <Campo etiqueta="Provincia" nombre="provincia" f={f} setF={setF} autoComplete="off" />
+          <Campo etiqueta="Fecha de alta" nombre="fecha_alta" f={f} setF={setF} type="date" />
+          <Campo etiqueta="Sueldo (S/)" nombre="sueldo" f={f} setF={setF} inputMode="decimal" autoComplete="off" />
+          <Campo etiqueta="AFP u ONP" nombre="afp" f={f} setF={setF} autoComplete="off" />
+          <Campo etiqueta="Código CUSPP" nombre="cuspp" f={f} setF={setF} autoComplete="off" />
+          <Campo etiqueta="Profesión u ocupación" nombre="profesion" f={f} setF={setF} full autoComplete="off" />
+        </div>
+        <h2>Documentos firmados y entregados</h2>
+        <Chips opciones={DOCUMENTOS.map((d) => d[1])} valor={f.documentos} multiple alCambiar={(v) => setF({ ...f, documentos: v })} />
+        {pendienteContrato.length > 0 && (
+          <p className="aviso">Para el contrato todavía falta: {pendienteContrato.join(', ')}. Puedes guardar la venta ahora y completarlo después en "Mi avance".</p>
+        )}
+      </section>
+
+      <section>
         <h2>Pago</h2>
         <Chips opciones={['Descuento por planilla', 'Pago directo']} valor={f.pago} alCambiar={(v) => setF({ ...f, pago: v })} />
         <div className="grid2">
@@ -187,6 +268,7 @@ export default function Venta() {
         )}
       </section>
 
+      {!ventaId && (
       <section>
         <h2>Primera mensualidad · {soles(montoCuota)}</h2>
         <Chips opciones={['Ya pagó', 'Todavía no']} valor={f.cuota} alCambiar={(v) => setF({ ...f, cuota: v })} />
@@ -201,15 +283,25 @@ export default function Venta() {
           <p className="aviso">La venta se guarda, pero no cuenta para tu meta hasta que se pague. Te aparecerá en "Hoy" para que le hagas seguimiento.</p>
         )}
       </section>
+      )}
 
+      {!ventaId && (
       <section>
         <h2>Así saldrá el mensaje</h2>
         <pre className="mensaje">{texto}</pre>
       </section>
+      )}
 
       {falta.length > 0 && <p className="aviso">Falta: {falta.join(', ')}.</p>}
       {aviso && <p className={`aviso aviso--${aviso[0]}`}>{aviso[1]}</p>}
 
+      {ventaId ? (
+        <div className="acciones">
+          <button type="button" className="btn" disabled={guardando || falta.length > 0 || !original} onClick={guardar}>
+            {guardando ? 'Guardando...' : 'Guardar cambios'}
+          </button>
+        </div>
+      ) : (
       <div className="acciones">
         <button type="button" className="btn" disabled={guardando || falta.length > 0} onClick={enviar}>
           {guardando ? 'Guardando...' : 'Guardar y enviar por WhatsApp'}
@@ -218,6 +310,7 @@ export default function Venta() {
           Solo guardar
         </button>
       </div>
+      )}
 
       {guardada && textoReferidos && guardada.celular && (
         <section>

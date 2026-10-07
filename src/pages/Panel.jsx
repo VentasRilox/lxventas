@@ -2,10 +2,11 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
-import { useCobros, useMes, useProspectos } from '../lib/useDatos'
+import { useCobros, useProspectos, useRango } from '../lib/useDatos'
 import { traducirError } from '../lib/errores'
-import { diasEntre, diasHabiles, fechaCorta, fechaLocalHoy, finDeMes, lunesDe, mesDe } from '../lib/fecha'
-import { BASICO, MOTIVOS, bonoSupervisor, esCaida, esValida, estadoAvance, estadoVenta, faltaPago, montoCuota, pagoJefe, premioAsesor, soles, titulo } from '../lib/reglas'
+import { diasEntre, diasHabiles, fechaCorta, fechaLocalHoy, lunesDe } from '../lib/fecha'
+import { dentroDe, periodoDe, textoPeriodo } from '../lib/periodo'
+import { BASICO, MOTIVOS, bonoSupervisor, esCaida, esValida, estadoAvance, estadoVenta, faltaContrato, faltaPago, montoCuota, pagoJefe, premioAsesor, soles, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 import Cobros from './panel/Cobros.jsx'
 import Asistencia from './panel/Asistencia.jsx'
@@ -47,55 +48,83 @@ function nuevo() {
   return { val: 0, pag: 0, rev: 0, cai: 0, sem: 0, caja: 0, vis: 0, ing: 0, con: 0, mov: 0, visRef: 0, ult: '' }
 }
 
-// Suma visitas y ventas por zona y por asesor.
-function calcular({ visitas, ventas, perfiles, zonasVisibles, cfg, mes, hoy }) {
-  const fin = finDeMes(mes)
-  const ref = mesDe(hoy) === mes ? hoy : hoy < `${mes}-01` ? `${mes}-01` : fin
-  const habTot = diasHabiles(`${mes}-01`, fin)
-  const avance = hoy < `${mes}-01` ? 0 : diasHabiles(`${mes}-01`, ref) / Math.max(1, habTot)
-  const lunes = lunesDe(ref)
+// Avance de un periodo: día de referencia, parte ya transcurrida y días que quedan.
+function ritmo(periodo, hoy) {
+  const ref = hoy > periodo.hasta ? periodo.hasta : hoy
+  const total = Math.max(1, diasHabiles(periodo.desde, periodo.hasta))
+  return {
+    ...periodo,
+    ref,
+    avance: hoy < periodo.desde ? 0 : diasHabiles(periodo.desde, ref) / total,
+    quedan: diasHabiles(hoy < periodo.desde ? periodo.desde : ref, periodo.hasta),
+    lunes: lunesDe(ref),
+  }
+}
+
+// Suma visitas y ventas por zona y por asesor. Cada zona cuenta solo lo que
+// cae dentro de su propio periodo de venta.
+function calcular({ visitas, ventas, perfiles, zonasVisibles, cfg, hoy, salto }) {
+  const base = ritmo(periodoDe(null, hoy, salto), hoy)
   const zona = {}
   const asesor = {}
   const tot = nuevo()
-  for (const z of zonasVisibles) zona[z.id] = { ...nuevo(), id: z.id, nombre: z.nombre, meta: z.meta_mensual, supervisor_id: z.supervisor_id }
-  for (const p of perfiles) if (p.rol === 'asesor' && p.activo) asesor[p.id] = { ...nuevo(), id: p.id, nombre: p.nombre, zona_id: p.zona_id, meta: p.meta_mensual || 20 }
+  for (const z of zonasVisibles) {
+    zona[z.id] = { ...nuevo(), ...ritmo(periodoDe(z.fecha_apertura, hoy, salto), hoy), id: z.id, nombre: z.nombre, meta: z.meta_mensual, supervisor_id: z.supervisor_id }
+  }
+  const ritmoDe = (zonaId) => zona[zonaId] ?? base
+  const fichaAsesor = (p, extra) => {
+    const r = ritmoDe(p.zona_id)
+    return { ...nuevo(), id: p.id, nombre: p.nombre, zona_id: p.zona_id, meta: p.meta_mensual || 20, ref: r.ref, avance: r.avance, ...extra }
+  }
+  for (const p of perfiles) if (p.rol === 'asesor' && p.activo) asesor[p.id] = fichaAsesor(p)
 
   const destinos = (r) => {
     const lista = [tot]
     if (zona[r.zona_id]) lista.push(zona[r.zona_id])
     if (!asesor[r.asesor_id]) {
       const p = perfiles.find((x) => x.id === r.asesor_id)
-      if (p?.rol === 'asesor') asesor[p.id] = { ...nuevo(), id: p.id, nombre: p.nombre, zona_id: p.zona_id, meta: p.meta_mensual || 20, inactivo: true }
+      if (p?.rol === 'asesor') asesor[p.id] = fichaAsesor(p, { inactivo: true })
     }
     if (asesor[r.asesor_id]) lista.push(asesor[r.asesor_id])
     return lista
   }
-  for (const v of ventas) {
+  const ventasPeriodo = ventas.filter((v) => dentroDe(ritmoDe(v.zona_id), v.fecha))
+  const visitasPeriodo = visitas.filter((v) => dentroDe(ritmoDe(v.zona_id), v.fecha))
+  for (const v of ventasPeriodo) {
+    const r = ritmoDe(v.zona_id)
     for (const o of destinos(v)) {
       if (esCaida(v)) o.cai++
       else if (esValida(v, cfg)) {
         o.val++
         o.caja += montoCuota(v, cfg)
-        if (v.fecha >= lunes && v.fecha <= ref) o.sem++
+        if (v.fecha >= r.lunes && v.fecha <= r.ref) o.sem++
       } else if (faltaPago(v, cfg)) o.pag++
       else o.rev++
       if (v.fecha > o.ult) o.ult = v.fecha
     }
   }
-  for (const v of visitas) {
+  for (const v of visitasPeriodo) {
+    const r = ritmoDe(v.zona_id)
     for (const o of destinos(v)) {
       o.vis++
       if (v.con_ingreso) o.ing++
       o.con += v.contactos
       o.mov += v.movilidad_centimos
-      if (v.fecha === ref) o.visRef++
+      if (v.fecha === r.ref) o.visRef++
       if (v.fecha > o.ult) o.ult = v.fecha
     }
   }
   const zonas = Object.values(zona)
   const asesores = Object.values(asesor).sort((a, b) => nombreZona(zona, a).localeCompare(nombreZona(zona, b)) || b.val - a.val)
   tot.meta = zonas.reduce((s, z) => s + z.meta, 0)
-  return { ref, avance, quedan: diasHabiles(ref, fin), zona, zonas, asesores, tot }
+  // Vista general: lo que abarcan todas las zonas y su avance promedio.
+  const todos = zonas.length ? zonas : [base]
+  const desde = todos.reduce((m, z) => (z.trae < m ? z.trae : m), todos[0].trae)
+  const hasta = todos.reduce((m, z) => (z.hasta > m ? z.hasta : m), todos[0].hasta)
+  const ref = hoy > hasta ? hasta : hoy
+  const avance = todos.reduce((s, z) => s + z.avance, 0) / todos.length
+  const mismo = todos.every((z) => z.desde === todos[0].desde && z.hasta === todos[0].hasta)
+  return { ref, avance, desde, hasta, etiqueta: mismo ? textoPeriodo(todos[0]) : '', hayAnterior: todos.some((z) => !z.primero), zona, zonas, asesores, tot, ventasPeriodo, visitasPeriodo }
 }
 
 function nombreZona(zona, a) {
@@ -105,9 +134,8 @@ function nombreZona(zona, a) {
 export default function Panel() {
   const { rol, perfil, cfg, zonas } = useSesion()
   const hoy = fechaLocalHoy()
-  const [mes, setMes] = useState(mesDe(hoy))
+  const [salto, setSalto] = useState(0)
   const [tab, setTab] = useState('resumen')
-  const { visitas, ventas, cargando, error, recargar } = useMes(mes)
   const seguimiento = useProspectos()
   const pagos = useCobros()
   const [perfiles, setPerfiles] = useState([])
@@ -121,9 +149,15 @@ export default function Panel() {
     () => zonas.filter((z) => z.activa && (rol !== 'supervisor' || z.supervisor_id === perfil.id)),
     [zonas, rol, perfil.id]
   )
+  // Se trae lo que abarcan los periodos de todas las zonas; cada zona cuenta lo suyo.
+  const [desde, hasta] = useMemo(() => {
+    const periodos = (zonasVisibles.length ? zonasVisibles : [{}]).map((z) => periodoDe(z.fecha_apertura, hoy, salto))
+    return [periodos.reduce((m, p) => (p.trae < m ? p.trae : m), periodos[0].trae), periodos.reduce((m, p) => (p.hasta > m ? p.hasta : m), periodos[0].hasta)]
+  }, [zonasVisibles, hoy, salto])
+  const { visitas, ventas, cargando, error, recargar } = useRango(desde, hasta)
   const C = useMemo(
-    () => calcular({ visitas, ventas, perfiles, zonasVisibles, cfg, mes, hoy }),
-    [visitas, ventas, perfiles, zonasVisibles, cfg, mes, hoy]
+    () => calcular({ visitas, ventas, perfiles, zonasVisibles, cfg, hoy, salto }),
+    [visitas, ventas, perfiles, zonasVisibles, cfg, hoy, salto]
   )
 
   const tabs = TABS[rol] ?? TABS.gerencia
@@ -155,11 +189,18 @@ export default function Panel() {
       <div className="fila" style={{ flexWrap: 'wrap' }}>
         <h1>Panel comercial</h1>
         <div className="fila">
-          <input type="month" aria-label="Mes" style={{ width: 'auto' }} value={mes} onChange={(e) => e.target.value && setMes(e.target.value)} />
           <button type="button" className="btn btn--sec btn--chico" onClick={recargarTodo}>
             {cargando ? 'Cargando…' : 'Actualizar'}
           </button>
         </div>
+      </div>
+      <div className="periodo">
+        <button type="button" className="btn btn--sec btn--chico" aria-label="Periodo anterior" disabled={!C.hayAnterior} onClick={() => setSalto(salto - 1)}>‹</button>
+        <div>
+          <b>{C.etiqueta || `Periodo ${salto === 0 ? 'actual' : salto === -1 ? 'anterior' : salto < 0 ? `de hace ${-salto}` : 'siguiente'} de cada ${nz}`}</b>
+          <span>{salto === 0 ? (C.etiqueta ? 'Periodo actual' : 'Cada una cuenta desde su fecha de apertura') : <button type="button" className="enlace" onClick={() => setSalto(0)}>Volver al periodo actual</button>}</span>
+        </div>
+        <button type="button" className="btn btn--sec btn--chico" aria-label="Periodo siguiente" disabled={salto >= 0} onClick={() => setSalto(salto + 1)}>›</button>
       </div>
       {(error || fallo) && <p className="aviso aviso--crit">{error || fallo}</p>}
 
@@ -179,15 +220,15 @@ export default function Panel() {
           {actual === 'resumen' && (
             <>
               <section>
-                <h2>Avance del mes</h2>
+                <h2>Avance del periodo</h2>
                 <div className="kpis">
                   <Kpi t="Ventas válidas" v={`${C.tot.val} de ${C.tot.meta}`} s="Nombrado, planilla y primera mensualidad pagada" />
-                  <Kpi t="Caja del mes" v={soles(C.tot.caja)} s={`Meta: ${soles(C.tot.meta * cuota)}`} />
+                  <Kpi t="Caja" v={soles(C.tot.caja)} s={`Meta: ${soles(C.tot.meta * cuota)}`} />
                   <Kpi t="Falta pago" v={C.tot.pag} s={porConfirmar ? `${porConfirmar} por confirmar en Cobros` : 'Vendidas, sin primera mensualidad'} />
                   <Kpi t="Esta semana" v={C.tot.sem} s={`Meta semanal: ${metaSemanal * C.zonas.length}`} />
                   <Kpi t="Por revisar" v={C.tot.rev} s="No cumplen nombrado y planilla" />
                   {rol === 'supervisor' ? (
-                    <Kpi t="Mi bono del mes" v={'S/ ' + C.zonas.reduce((s, z) => s + bonoSupervisor(z.val), 0).toLocaleString('en-US')} s="40 ventas: S/ 1,000 · 60: S/ 2,000" />
+                    <Kpi t="Mi bono" v={'S/ ' + C.zonas.reduce((s, z) => s + bonoSupervisor(z.val), 0).toLocaleString('en-US')} s="40 ventas: S/ 1,000 · 60: S/ 2,000" />
                   ) : (
                     <Kpi t="Valor contratado" v={soles(C.tot.val * valorVenta)} s={`${soles(valorVenta)} por venta válida`} />
                   )}
@@ -205,15 +246,16 @@ export default function Panel() {
                       <div className="tarjeta" key={z.id}>
                         <div className="fila">
                           <h3>{titulo(z.nombre)}</h3>
-                          <Pill e={estadoAvance(z.val, z.meta, C.avance)} />
+                          <Pill e={estadoAvance(z.val, z.meta, z.avance)} />
                         </div>
+                        <p className="small muted">Periodo: {textoPeriodo(z)}</p>
                         <div className="grande">
                           {z.val} <small>/ {z.meta} ventas</small>
                         </div>
-                        <Barra valor={z.val} meta={z.meta} avance={C.avance} />
+                        <Barra valor={z.val} meta={z.meta} avance={z.avance} />
                         <p className="small muted">
                           {faltan
-                            ? `Faltan ${faltan} en ${C.quedan} días hábiles: ${Math.ceil((faltan / Math.max(1, C.quedan)) * 10) / 10} por día.`
+                            ? `Faltan ${faltan} en ${z.quedan} días hábiles: ${Math.ceil((faltan / Math.max(1, z.quedan)) * 10) / 10} por día.`
                             : 'Todo lo que se cierre ahora es extra.'}{' '}
                           Semana: {z.sem} de {metaSemanal}.
                         </p>
@@ -229,7 +271,7 @@ export default function Panel() {
                   })}
                 </div>
                 {C.zonas.length === 0 && <p className="muted">Todavía no hay {nz} registradas. {rol === 'jefe' ? 'Agrégalas en Equipo.' : ''}</p>}
-                <p className="small muted">La marca negra de cada barra es donde debería ir hoy según los días hábiles del mes.</p>
+                <p className="small muted">La marca negra de cada barra es donde debería ir hoy según los días hábiles de su periodo.</p>
               </section>
             </>
           )}
@@ -240,14 +282,15 @@ export default function Panel() {
               <div className="tarjetas">
                 {supervisores.map((sp) => {
                   const suyas = C.zonas.filter((z) => z.supervisor_id === sp.id)
+                  const avanceSp = suyas.length ? suyas.reduce((t, z) => t + z.avance, 0) / suyas.length : C.avance
                   const o = suyas.reduce((a, z) => ({ val: a.val + z.val, meta: a.meta + z.meta, sem: a.sem + z.sem, rev: a.rev + z.rev, vis: a.vis + z.vis, ing: a.ing + z.ing, bono: a.bono + bonoSupervisor(z.val) }), { val: 0, meta: 0, sem: 0, rev: 0, vis: 0, ing: 0, bono: 0 })
                   const as = C.asesores.filter((a) => !a.inactivo && suyas.some((z) => z.id === a.zona_id))
-                  const sin = as.filter((a) => !a.ult || a.ult < C.ref).length
+                  const sin = as.filter((a) => !a.ult || a.ult < a.ref).length
                   return (
                     <div className="tarjeta" key={sp.id}>
                       <div className="fila">
                         <h3>{titulo(sp.nombre)}</h3>
-                        <Pill e={estadoAvance(o.val, o.meta, C.avance)} />
+                        <Pill e={estadoAvance(o.val, o.meta, avanceSp)} />
                       </div>
                       <p className="small muted">
                         {suyas.length ? `${nz} ${suyas.map((z) => titulo(z.nombre)).join(' y ')}` : `Sin ${nz} asignada`} · {as.length} de {3 * suyas.length} asesores
@@ -255,7 +298,7 @@ export default function Panel() {
                       <div className="grande">
                         {o.val} <small>/ {o.meta} ventas</small>
                       </div>
-                      <Barra valor={o.val} meta={o.meta} avance={C.avance} />
+                      <Barra valor={o.val} meta={o.meta} avance={avanceSp} />
                       <div className="embudo">
                         <div><b>{o.sem}</b><span>Semana (de {metaSemanal * suyas.length})</span></div>
                         <div><b>{pct(o.ing, o.vis)}</b><span>Con ingreso</span></div>
@@ -287,8 +330,8 @@ export default function Panel() {
                     </thead>
                     <tbody>
                       {C.asesores.map((a) => {
-                        const finDeSemana = [0, 6].includes(new Date(C.ref + 'T12:00:00').getDay())
-                        const e = a.inactivo ? ['neu', 'Inactivo'] : !a.ult ? ['crit', 'Sin reportes'] : a.ult < C.ref && !finDeSemana ? ['warn', 'Sin reporte hoy'] : estadoAvance(a.val, a.meta, C.avance)
+                        const finDeSemana = [0, 6].includes(new Date(a.ref + 'T12:00:00').getDay())
+                        const e = a.inactivo ? ['neu', 'Inactivo'] : !a.ult ? ['crit', 'Sin reportes'] : a.ult < a.ref && !finDeSemana ? ['warn', 'Sin reporte hoy'] : estadoAvance(a.val, a.meta, a.avance)
                         return (
                           <tr key={a.id}>
                             <td>{titulo(a.nombre)}</td>
@@ -311,7 +354,7 @@ export default function Panel() {
               <section>
                 <h2>Colegios por volver</h2>
                 <ul className="lista">
-                  {Object.values(visitas.reduce((m, v) => ({ ...m, [v.zona_id + '|' + v.lugar]: v }), {}))
+                  {Object.values(C.visitasPeriodo.reduce((m, v) => ({ ...m, [v.zona_id + '|' + v.lugar]: v }), {}))
                     .filter((v) => !v.con_ingreso)
                     .map((v) => (
                       <li key={v.id}>
@@ -321,7 +364,7 @@ export default function Panel() {
                         </span>
                       </li>
                     ))}
-                  {!visitas.some((v) => !v.con_ingreso) && <li><span className="muted">Ningún colegio pendiente.</span></li>}
+                  {!C.visitasPeriodo.some((v) => !v.con_ingreso) && <li><span className="muted">Ningún colegio pendiente.</span></li>}
                 </ul>
               </section>
             </>
@@ -329,14 +372,14 @@ export default function Panel() {
 
           {actual === 'ventas' && (
             <section>
-              <h2>Ventas del mes</h2>
+              <h2>Ventas del periodo</h2>
               <div className="tabla">
                 <table>
                   <thead>
-                    <tr><th>Fecha</th><th>{contacto}</th><th>{cfg?.nombre_lugar ?? 'Lugar'}</th><th>Asesor</th><th>Programa</th><th>Estado</th>{rol !== 'gerencia' && <th></th>}</tr>
+                    <tr><th>Fecha</th><th>{contacto}</th><th>{cfg?.nombre_lugar ?? 'Lugar'}</th><th>Asesor</th><th>Programa</th><th>Estado</th><th>Contrato</th>{rol !== 'gerencia' && <th></th>}</tr>
                   </thead>
                   <tbody>
-                    {ventas.slice().reverse().map((v) => (
+                    {C.ventasPeriodo.slice().reverse().map((v) => (
                       <tr key={v.id}>
                         <td>{fechaCorta(v.fecha)}</td>
                         <td>{titulo(v.nombre)}</td>
@@ -344,6 +387,7 @@ export default function Panel() {
                         <td>{nombreDe(v.asesor_id)}</td>
                         <td>{titulo(v.programa)}</td>
                         <td><Pill e={estadoVenta(v, cfg)} /></td>
+                        <td>{esCaida(v) ? '–' : faltaContrato(v).length ? <span title={faltaContrato(v).join(', ')}>Faltan {faltaContrato(v).length}</span> : 'Completo'}</td>
                         {rol !== 'gerencia' && (
                           <td>
                             <button type="button" className="btn btn--sec btn--chico" onClick={() => marcarCaida(v)}>
@@ -353,7 +397,7 @@ export default function Panel() {
                         )}
                       </tr>
                     ))}
-                    {ventas.length === 0 && <tr><td colSpan="7" className="muted">Todavía no hay ventas registradas este mes.</td></tr>}
+                    {C.ventasPeriodo.length === 0 && <tr><td colSpan="8" className="muted">Todavía no hay ventas registradas en este periodo.</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -366,11 +410,11 @@ export default function Panel() {
           )}
 
           {actual === 'asistencia' && (
-            <Asistencia mes={mes} diaInicial={C.ref} asesores={C.asesores} nombreZona={(a) => nombreZona(C.zona, a)} cfg={cfg} />
+            <Asistencia desde={C.desde} hasta={C.hasta} diaInicial={C.ref} asesores={C.asesores} nombreZona={(a) => nombreZona(C.zona, a)} cfg={cfg} />
           )}
 
           {actual === 'seguimiento' && (
-            <VistaSeguimiento prospectos={seguimiento.prospectos} recargar={seguimiento.recargar} perfiles={perfiles} nombreDe={nombreDe} cfg={cfg} rol={rol} hoy={hoy} mes={mes} />
+            <VistaSeguimiento prospectos={seguimiento.prospectos} recargar={seguimiento.recargar} perfiles={perfiles} nombreDe={nombreDe} cfg={cfg} rol={rol} hoy={hoy} />
           )}
 
           {actual === 'dinero' && (() => {
@@ -385,9 +429,9 @@ export default function Panel() {
             return (
               <>
                 <section>
-                  <h2>Dinero del mes</h2>
+                  <h2>Dinero del periodo</h2>
                   <div className="kpis">
-                    <Kpi t="Caja del mes" v={soles(C.tot.caja)} s="Primeras mensualidades confirmadas" />
+                    <Kpi t="Caja" v={soles(C.tot.caja)} s="Primeras mensualidades confirmadas" />
                     <Kpi t="Valor contratado" v={soles(valor)} s={`${C.tot.val} ventas válidas × ${soles(valorVenta)}`} />
                     <Kpi t="Costo del equipo" v={soles(costo)} s="Básicos, premios, bonos y movilidad" />
                     <Kpi t="Costo sobre lo contratado" v={valor ? ((costo / valor) * 100).toFixed(1) + '%' : '–'} />
@@ -408,7 +452,7 @@ export default function Panel() {
                       </tbody>
                     </table>
                   </div>
-                  <p className="small muted">Estimación con la escala acordada y el mes completo. No incluye cargas de planilla ni premios en especie.</p>
+                  <p className="small muted">Estimación con la escala acordada y el periodo completo. No incluye cargas de planilla ni premios en especie.</p>
                 </section>
                 <section>
                   <h2>Premio por asesor</h2>
@@ -438,7 +482,7 @@ export default function Panel() {
   )
 }
 
-function VistaSeguimiento({ prospectos, recargar, perfiles, nombreDe, cfg, rol, hoy, mes }) {
+function VistaSeguimiento({ prospectos, recargar, perfiles, nombreDe, cfg, rol, hoy }) {
   const [de, setDe] = useState('')
   const [a, setA] = useState('')
   const [mensaje, setMensaje] = useState('')
@@ -500,7 +544,7 @@ function VistaSeguimiento({ prospectos, recargar, perfiles, nombreDe, cfg, rol, 
             </tbody>
           </table>
         </div>
-        <p className="small muted">Cierre: de los seguimientos terminados, cuántos compraron. Mes del panel: {mes}; el seguimiento muestra toda la cartera.</p>
+        <p className="small muted">Cierre: de los seguimientos terminados, cuántos compraron. El seguimiento muestra toda la cartera, no solo este periodo.</p>
       </section>
 
       <section>
