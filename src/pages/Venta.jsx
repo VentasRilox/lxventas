@@ -43,6 +43,11 @@ export default function Venta() {
   const [aviso, setAviso] = useState(null)
   const [guardada, setGuardada] = useState(null)
 
+  // Sin programa recordado, se propone el de la empresa: así todos lo escriben igual.
+  useEffect(() => {
+    if (cfg?.producto) setF((antes) => (antes.programa ? antes : { ...antes, programa: cfg.producto }))
+  }, [cfg?.producto])
+
   const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
   const ctx = { asesor: perfil.nombre, zona: zona?.nombre ?? '', firma: cfg?.firma ?? '' }
   const texto = textoVenta(f, ctx)
@@ -221,7 +226,8 @@ export default function Venta() {
       <section>
         <h2>Programa</h2>
         <div className="grid2">
-          <Campo etiqueta="Programa de estudio (se recuerda el último)" nombre="programa" f={f} setF={setF} full autoComplete="off" />
+          <Campo etiqueta="Programa de estudio" nombre="programa" f={f} setF={setF} full autoComplete="off" list="programas" />
+          <datalist id="programas">{cfg?.producto && <option value={cfg.producto} />}</datalist>
         </div>
       </section>
 
@@ -335,7 +341,7 @@ export default function Venta() {
             {guardando ? 'Guardando...' : 'Guardar cambios'}
           </button>
         </div>
-      ) : (
+      ) : guardada ? null : (
       <div className="acciones acciones--fijas">
         <button type="button" className="btn" disabled={guardando || falta.length > 0} onClick={enviar}>
           {guardando ? 'Guardando...' : 'Guardar y enviar'}

@@ -111,3 +111,8 @@ export function minutosEntre(desde, hasta) {
   const b = m(hasta)
   return a === null || b === null ? null : b - a
 }
+
+// Fecha local ('YYYY-MM-DD') de una marca de tiempo del servidor.
+export function fechaDeMarca(marca) {
+  return marca ? formatearFechaLocal(new Date(marca)) : ''
+}

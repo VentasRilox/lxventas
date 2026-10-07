@@ -9,10 +9,17 @@ function sinTildes(texto) {
   return mayus(texto).normalize('NFD').replace(/[̀-ͯ]/g, '')
 }
 
+// "ESPECIALIZACION DE EDUCACIÓN" → "Especializacion de Educación". Las palabras
+// de enlace van en minúscula y los espacios dobles se quitan.
+const ENLACES = new Set(['de', 'del', 'la', 'las', 'el', 'los', 'en', 'y', 'e', 'o', 'a', 'con', 'para', 'por'])
+
 export function titulo(texto) {
   return String(texto ?? '')
     .toLowerCase()
-    .replace(/(^|\s)\S/g, (c) => c.toUpperCase())
+    .trim()
+    .split(/\s+/)
+    .map((palabra, i) => (i > 0 && ENLACES.has(palabra) ? palabra : palabra.charAt(0).toUpperCase() + palabra.slice(1)))
+    .join(' ')
 }
 
 export function soles(centimos) {

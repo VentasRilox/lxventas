@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
-import { fechaCorta, fechaLocalHoy, sumarDias } from '../lib/fecha'
+import { fechaCorta, fechaDeMarca, fechaLocalHoy, sumarDias } from '../lib/fecha'
 import { INTERESES, MOTIVOS, RESULTADOS_CONTACTO, diasSegunInteres, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, fechaCorteTexto, llenarPlantilla, plantillaPara } from '../lib/mensajes'
 import Chips from '../components/Chips.jsx'
@@ -47,7 +47,10 @@ export default function Prospecto() {
   // Mensaje sugerido del paso actual y fecha propuesta para el siguiente.
   useEffect(() => {
     if (!p) return
-    const plantilla = plantillaPara(plantillas, p.paso, p.motivo)
+    // El mensaje 1 agradece la visita "de hoy": solo vale el mismo día del
+    // registro. Si ya pasó, se propone el de seguimiento.
+    const pasoMensaje = p.paso === 1 && fechaDeMarca(p.creado_en) !== fechaLocalHoy() ? 2 : p.paso
+    const plantilla = plantillaPara(plantillas, pasoMensaje, p.motivo)
     setTexto(
       plantilla
         ? llenarPlantilla(plantilla.texto, {
@@ -71,6 +74,7 @@ export default function Prospecto() {
   const contacto = cfg?.nombre_contacto ?? 'Contacto'
   const abierto = p.estado === 'abierto'
   const mio = p.asesor_id === perfil.id
+  const agradecerHoy = p.paso === 1 && fechaDeMarca(p.creado_en) === hoy
 
   async function actualizar(cambios) {
     const { error: fallo } = await supabase.from('prospectos').update(cambios).eq('id', p.id)
@@ -158,8 +162,11 @@ export default function Prospecto() {
         <section>
           <h2>
             Contacto {Math.min(p.paso, ULTIMO_PASO)} de {ULTIMO_PASO}
-            {p.proximo_contacto && ` · toca el ${fechaCorta(p.proximo_contacto)}`}
+            {agradecerHoy ? ' · agradecimiento de hoy' : p.proximo_contacto ? (p.proximo_contacto <= hoy ? ' · toca hoy' : ` · toca el ${fechaCorta(p.proximo_contacto)}`) : ''}
           </h2>
+          {agradecerHoy && p.proximo_contacto > hoy && (
+            <p className="small muted">Envíale hoy el agradecimiento. La llamada que acordaron queda para el {fechaCorta(p.proximo_contacto)}.</p>
+          )}
           <label htmlFor="mensaje">
             Mensaje listo (puedes cambiarlo antes de enviar)
             <textarea id="mensaje" style={{ minHeight: 150 }} value={texto} onChange={(e) => setTexto(e.target.value)} />

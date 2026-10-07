@@ -1,10 +1,10 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { useRango } from '../lib/useDatos'
 import { traducirError } from '../lib/errores'
-import { diaSemana, diasHabiles, fechaCorta, fechaLocalHoy, fechaMensaje } from '../lib/fecha'
+import { diaSemana, diasHabiles, fechaCorta, fechaDeMarca, fechaLocalHoy, fechaMensaje } from '../lib/fecha'
 import { periodoDe, textoPeriodo } from '../lib/periodo'
 import { esValida, estadoVenta, faltaContrato, faltaPago, mayus, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp } from '../lib/mensajes'
@@ -17,6 +17,23 @@ export default function Avance() {
   const { visitas, ventas, cargando, error, recargar } = useRango(periodo.trae, periodo.hasta)
   const [quitando, setQuitando] = useState(null)
   const [fallo, setFallo] = useState('')
+  const [registradas, setRegistradas] = useState(0)
+
+  // Personas que el asesor registró hoy, para cuadrar con lo declarado en sus visitas.
+  useEffect(() => {
+    let activo = true
+    supabase
+      .from('prospectos')
+      .select('creado_en, ultimo_contacto')
+      .eq('asesor_id', perfil.id)
+      .eq('ultimo_contacto', hoy)
+      .then(({ data }) => {
+        if (activo) setRegistradas((data ?? []).filter((p) => fechaDeMarca(p.creado_en) === hoy).length)
+      })
+    return () => {
+      activo = false
+    }
+  }, [perfil.id, hoy])
 
   const r = useMemo(() => {
     const misVisitas = visitas.filter((v) => v.asesor_id === perfil.id)
@@ -46,7 +63,6 @@ export default function Avance() {
   const avance = hoy < periodo.desde ? 0 : diasHabiles(periodo.desde, hoy) / Math.max(1, diasHabiles(periodo.desde, periodo.hasta))
   const quedan = diasHabiles(inicio, periodo.hasta)
   const faltan = Math.max(0, meta - r.validas)
-  const contacto = (cfg?.nombre_contacto ?? 'Contacto').toLowerCase()
 
   const resumen = [
     'RESUMEN DEL DÍA: ' + diaSemana(hoy) + ' ' + fechaMensaje(hoy, '/'),
@@ -54,6 +70,7 @@ export default function Avance() {
     'COLEGIOS VISITADOS: ' + r.hoyVis.length,
     'CON INGRESO: ' + r.ingresos,
     'DOCENTES CONVERSADOS: ' + r.contactos,
+    'REGISTRADOS EN EL SISTEMA: ' + registradas,
     'VENTAS DE HOY: ' + r.ventasHoy.length,
     'MOVILIDAD: ' + Math.round(r.movilidad / 100),
     'VENTAS DEL PERIODO: ' + r.validas + ' DE ' + meta,
@@ -79,7 +96,7 @@ export default function Avance() {
       <section>
         <h2>Mi meta · {textoPeriodo(periodo)}</h2>
         <div className="grande">
-          {r.validas} <small>/ {meta} ventas</small>
+          {r.validas} <small>/ {meta} ventas válidas</small>
         </div>
         <div className="barra">
           <i style={{ width: Math.min(100, (r.validas / meta) * 100) + '%' }} />
@@ -89,7 +106,7 @@ export default function Avance() {
           {faltan
             ? `Te faltan ${faltan} en ${quedan} días hábiles: ${Math.ceil((faltan / Math.max(1, quedan)) * 10) / 10} por día. La marca negra es donde deberías ir hoy.`
             : 'Meta cumplida. Todo lo que cierres ahora es extra.'}
-          {r.sinPago > 0 && ` Tienes ${r.sinPago} sin primera mensualidad confirmada: no cuentan hasta que se pague.`}
+          {r.sinPago > 0 && ` Ya vendiste ${r.sinPago} más, pero ${r.sinPago === 1 ? 'falta' : 'faltan'} su primera mensualidad: ${r.sinPago === 1 ? 'contará' : 'contarán'} cuando se pague y tu supervisor lo confirme.`}
           {r.porRevisar > 0 && ` Tienes ${r.porRevisar} por revisar: no cuentan hasta que sean de nombrado con planilla.`}
         </p>
       </section>
@@ -97,9 +114,13 @@ export default function Avance() {
       <section>
         <h2>Hoy</h2>
         <div className="kpis">
-          <div className="kpi"><span>Ventas</span><b>{r.ventasHoy.length}</b></div>
+          <div className="kpi"><span>Ventas de hoy</span><b>{r.ventasHoy.length}</b><small>{r.ventasHoy.filter((v) => esValida(v, cfg)).length} con pago confirmado</small></div>
           <div className="kpi"><span>Visitas</span><b>{r.hoyVis.length}</b><small>{r.ingresos} con ingreso</small></div>
-          <div className="kpi"><span>{titulo(contacto)}s conversados</span><b>{r.contactos}</b></div>
+          <div className="kpi">
+            <span>Personas registradas</span>
+            <b>{registradas} <small style={{ fontSize: 'var(--t-sm)', fontWeight: 500 }}>de {r.contactos}</small></b>
+            <small>{registradas < r.contactos ? `Atendiste ${r.contactos} según tus visitas: te falta registrar ${r.contactos - registradas}` : 'Atendidas según tus visitas'}</small>
+          </div>
           <div className="kpi"><span>Movilidad</span><b>{soles(r.movilidad)}</b></div>
         </div>
         <ul className="lista">
