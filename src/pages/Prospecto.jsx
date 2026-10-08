@@ -7,6 +7,7 @@ import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaDeMarca, fechaLocalHoy, sumarDias } from '../lib/fecha'
 import { INTERESES, MOTIVOS, RESULTADOS_CONTACTO, diasSegunInteres, puedeVender, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, fechaCorteTexto, llenarPlantilla, plantillaPara } from '../lib/mensajes'
+import RespuestasDuda from '../components/RespuestasDuda.jsx'
 import Chips from '../components/Chips.jsx'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
@@ -166,6 +167,7 @@ export default function Prospecto() {
         <Chips opciones={INTERESES} valor={p.interes} disabled={!abierto || soloVer} alCambiar={async (v) => { if (v && (await actualizar({ interes: v }))) cargar() }} />
         <h2>Su duda principal</h2>
         <Chips opciones={MOTIVOS} valor={p.motivo ?? ''} disabled={!abierto || soloVer} alCambiar={async (v) => { if (await actualizar({ motivo: v || null })) cargar() }} />
+        {abierto && <RespuestasDuda motivo={p.motivo} />}
         {p.comentario && <p className="muted">{p.comentario}</p>}
       </section>
 

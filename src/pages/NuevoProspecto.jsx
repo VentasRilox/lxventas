@@ -8,6 +8,7 @@ import { fechaCorta, fechaLocalHoy, sumarDias } from '../lib/fecha'
 import { INTERESES, MOTIVOS, diasSegunInteres, mayus, titulo } from '../lib/reglas'
 import { errorCelular } from '../lib/validar'
 import Campo from '../components/Campo.jsx'
+import RespuestasDuda from '../components/RespuestasDuda.jsx'
 import Chips from '../components/Chips.jsx'
 
 // Un solo lugar para registrar a cada persona con la que habló el asesor.
@@ -165,6 +166,7 @@ export default function NuevoProspecto() {
           <Chips opciones={INTERESES} valor={f.interes} alCambiar={(v) => setF({ ...f, interes: v || 'medio', volver: '' })} />
           <p className="etiqueta">Su duda principal (para elegirle el mensaje)</p>
           <Chips opciones={MOTIVOS} valor={f.motivo} alCambiar={(v) => setF({ ...f, motivo: v })} />
+          <RespuestasDuda motivo={f.motivo} />
           <details className="plegable">
             <summary>Agregar comentario o quién lo recomendó</summary>
             <Campo etiqueta="Comentario" nombre="comentario" f={f} setF={setF} area placeholder="Lo que conversaron y lo que quedó pendiente" />

@@ -225,3 +225,8 @@ input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
 .escala > .siguiente { border-color: var(--accent); border-width: 2px; }
 .ranking li.yo { background: var(--ok-bg); border-radius: 10px; }
 .ranking .puesto { font-weight: 700; min-width: 2.2em; }
+
+/* Respuestas sugeridas ante la duda del docente. */
+.respuestas { background: var(--ok-bg); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; }
+.respuestas .etiqueta { margin: 0 0 4px; }
+.respuestas ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }

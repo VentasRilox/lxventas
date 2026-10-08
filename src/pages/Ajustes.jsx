@@ -3,6 +3,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { MOTIVOS } from '../lib/reglas'
+import { RESPUESTAS_BASE } from '../lib/respuestas'
 import Campo from '../components/Campo.jsx'
 
 const PASOS = { 1: 'Contacto 1 · el mismo día', 2: 'Contacto 2', 3: 'Contacto 3', 4: 'Contacto 4 · fecha límite', 9: 'Al cerrar la venta' }
@@ -16,7 +17,8 @@ export default function Ajustes() {
 
   useEffect(() => {
     if (cfg && !f) {
-      setF({ ...cfg, valor_venta: String((cfg.valor_venta_centimos ?? 0) / 100), primera_cuota: String((cfg.primera_cuota_centimos ?? 13000) / 100), dia_corte_planilla: cfg.dia_corte_planilla ?? '' })
+      const resp = Object.fromEntries(MOTIVOS.map(([m]) => [m, ((Array.isArray(cfg.respuestas?.[m]) && cfg.respuestas[m].length ? cfg.respuestas[m] : RESPUESTAS_BASE[m]) ?? []).join('\n')]))
+      setF({ ...cfg, resp, valor_venta: String((cfg.valor_venta_centimos ?? 0) / 100), primera_cuota: String((cfg.primera_cuota_centimos ?? 13000) / 100), dia_corte_planilla: cfg.dia_corte_planilla ?? '' })
     }
   }, [cfg, f])
 
@@ -54,6 +56,7 @@ export default function Ajustes() {
         primera_cuota_centimos: Math.round((parseFloat(f.primera_cuota) || 0) * 100),
         hora_tolerancia: /^\d{2}:\d{2}$/.test(f.hora_tolerancia ?? '') ? f.hora_tolerancia : '08:15',
         dias_alerta_cuota: entero(f.dias_alerta_cuota, 3),
+        ...('respuestas' in cfg ? { respuestas: Object.fromEntries(MOTIVOS.map(([m]) => [m, String(f.resp?.[m] ?? '').split('\n').map((l) => l.trim()).filter(Boolean)])) } : {}),
         ...('supervisor_registra' in cfg ? { supervisor_registra: Boolean(f.supervisor_registra) } : {}),
         dominio_correo: String(f.dominio_correo ?? '').trim().toLowerCase().replace(/^@/, '') || null,
       })
@@ -120,6 +123,19 @@ export default function Ajustes() {
           <Campo etiqueta="Cliente frío" nombre="dias_interes_bajo" f={f} setF={setF} inputMode="numeric" />
           <Campo etiqueta="Días para avisar al supervisor" nombre="dias_escalar_supervisor" f={f} setF={setF} inputMode="numeric" />
         </div>
+
+        {'respuestas' in cfg && (
+          <>
+            <h2>Qué responder ante cada duda</h2>
+            <p className="small muted">El asesor las ve al marcar la duda del {String(f.nombre_contacto || 'docente').toLowerCase()}. Una respuesta por línea. Escribe solo lo que sea cierto de tu producto. {'{cuota}'} pone el monto de la primera mensualidad.</p>
+            {MOTIVOS.map(([m, t]) => (
+              <label key={m} htmlFor={'r_' + m}>
+                Si su duda es: {t.toLowerCase()}
+                <textarea id={'r_' + m} style={{ minHeight: 110 }} value={f.resp?.[m] ?? ''} onChange={(e) => setF({ ...f, resp: { ...f.resp, [m]: e.target.value } })} />
+              </label>
+            ))}
+          </>
+        )}
 
         <h2>Mensajes de seguimiento</h2>
         <p className="small muted">
