@@ -35,13 +35,19 @@ export default function Seguimiento() {
     <main className="contenido contenido--angosto">
       <div className="fila">
         <h1>Cartera</h1>
-        <Link to="/docente" className="btn btn--chico">
-          Registrar
-        </Link>
+        {rol !== 'supervisor' && (
+          <Link to="/docente" className="btn btn--chico">
+            Registrar
+          </Link>
+        )}
       </div>
-      <Link to="/seguimiento/importar" className="small">
-        Agregar varios de una vez pegando una lista
-      </Link>
+      {rol === 'supervisor' ? (
+        <p className="small muted">Personas que registró tu equipo. Tú solo las revisas: el seguimiento lo hace cada asesor.</p>
+      ) : (
+        <Link to="/seguimiento/importar" className="small">
+          Agregar varios de una vez pegando una lista
+        </Link>
+      )}
       {error && <p className="aviso aviso--crit">{error}</p>}
 
       <div className="tabs">
@@ -74,7 +80,7 @@ export default function Seguimiento() {
           <li>
             <span className="muted">
               {estado === 'abierto'
-                ? `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra a cada ${contacto.toLowerCase()} con el que hables y marca "Quedó interesado".`
+                ? rol === 'supervisor' ? 'Tu equipo aún no tiene personas en seguimiento.' : `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra a cada ${contacto.toLowerCase()} con el que hables y marca "Quedó interesado".`
                 : 'No hay nadie en esta lista.'}
             </span>
           </li>

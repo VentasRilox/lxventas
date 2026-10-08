@@ -22,7 +22,9 @@ function vacio(numero) {
 }
 
 export default function Visita() {
-  const { perfil, zona, cfg } = useSesion()
+  const { perfil, zona, cfg, rol } = useSesion()
+  // El supervisor solo conversa con el director y anota el colegio y sus pasajes.
+  const sup = rol === 'supervisor'
   const [f, setF] = useState(() => vacio(1))
   const [lugares, setLugares] = useState({})
   const [guardando, setGuardando] = useState(false)
@@ -33,7 +35,7 @@ export default function Visita() {
   const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
   const contactoNombre = cfg?.nombre_contacto ?? 'Contacto'
   const sin = f.resultado !== '' && !visitaConIngreso(f.resultado)
-  const ctx = { asesor: perfil.nombre, zona: zona?.nombre ?? '', firma: cfg?.firma ?? '' }
+  const ctx = { asesor: perfil.nombre, zona: zona?.nombre ?? '', firma: cfg?.firma ?? '', supervisor: sup }
   const datos = { ...f, niveles: f.niveles.join(', ') }
   const texto = textoVisita(datos, ctx)
   const falta = [!mayus(f.resultado) && 'resultado', !mayus(f.lugar) && lugarNombre.toLowerCase()].filter(Boolean)
@@ -87,14 +89,14 @@ export default function Visita() {
       con_ingreso: !sin,
       numero: mayus(f.numero),
       niveles: sin ? '' : mayus(f.niveles.join(', ')),
-      contactos: sin ? 0 : parseInt(f.contactos, 10) || 0,
-      ventas_declaradas: sin ? 0 : parseInt(f.ventas_declaradas, 10) || 0,
+      contactos: sin || sup ? 0 : parseInt(f.contactos, 10) || 0,
+      ventas_declaradas: sin || sup ? 0 : parseInt(f.ventas_declaradas, 10) || 0,
       movilidad_centimos: Math.round((parseFloat(f.movilidad) || 0) * 100),
       director: mayus(f.director),
       celular: mayus(f.celular),
       direccion: mayus(f.direccion),
       referencia: mayus(f.referencia),
-      psi: sin ? '' : mayus(f.psi),
+      psi: sin || sup ? '' : mayus(f.psi),
       observacion: mayus(f.observacion),
     }
     const r = await guardarRegistro('visitas', fila)
@@ -104,7 +106,7 @@ export default function Visita() {
       return false
     }
     setLugares((antes) => ({ ...antes, [lugar]: fila }))
-    setGuardado(sin ? null : lugar)
+    setGuardado(sin || sup ? null : lugar)
     setAviso(['ok', r.pendiente ? 'Sin señal: la visita quedó guardada en el celular y se subirá sola.' : 'Visita guardada.'])
     return true
   }
@@ -126,11 +128,12 @@ export default function Visita() {
   }
 
   const conocido = Boolean(lugares[mayus(f.lugar)])
-  const mostrarDatos = verDatos ?? false
+  const mostrarDatos = verDatos ?? sup
 
   return (
     <main className="contenido contenido--angosto">
-      <h1>Reporte de visita</h1>
+      <h1>{sup ? 'Visita a colegio' : 'Reporte de visita'}</h1>
+      {sup && <p className="muted">Anota el colegio, lo que conversaste con el director y tus pasajes.</p>}
 
       <section>
         <h2>1. ¿Cómo te fue?</h2>
@@ -162,7 +165,14 @@ export default function Visita() {
         </details>
       </section>
 
-      {!sin && (
+      {!sin && sup && (
+        <section>
+          <h2>3. Niveles del colegio</h2>
+          <Chips opciones={NIVELES} valor={f.niveles} multiple alCambiar={(v) => setF({ ...f, niveles: NIVELES.filter((n) => v.includes(n)) })} />
+        </section>
+      )}
+
+      {!sin && !sup && (
         <section>
           <h2>3. Números de la visita</h2>
           <div className="grid2">
@@ -175,11 +185,11 @@ export default function Visita() {
       )}
 
       <section>
-        <h2>{sin ? '3' : '4'}. Movilidad y observación</h2>
+        <h2>{sin ? '3' : '4'}. {sup ? 'Pasajes y acuerdo con el director' : 'Movilidad y observación'}</h2>
         <div className="grid2">
-          <Campo etiqueta="Movilidad (S/)" nombre="movilidad" f={f} setF={setF} inputMode="decimal" placeholder="0" />
-          {!sin && <Campo etiqueta="PSI" nombre="psi" f={f} setF={setF} />}
-          <Campo etiqueta={sin ? 'Observación: ¿por qué no hubo ingreso?' : 'Observación (opcional)'} nombre="observacion" f={f} setF={setF} full area />
+          <Campo etiqueta={sup ? 'Pasajes (S/)' : 'Movilidad (S/)'} nombre="movilidad" f={f} setF={setF} inputMode="decimal" placeholder="0" />
+          {!sin && !sup && <Campo etiqueta="PSI" nombre="psi" f={f} setF={setF} />}
+          <Campo etiqueta={sin ? 'Observación: ¿por qué no hubo ingreso?' : sup ? '¿Qué acordaste con el director?' : 'Observación (opcional)'} nombre="observacion" f={f} setF={setF} full area />
         </div>
         <details className="plegable">
           <summary>Fecha y hora: {fechaCorta(f.fecha)} · {horaCorta(f.hora)} (cambiar)</summary>

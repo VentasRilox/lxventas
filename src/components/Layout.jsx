@@ -8,11 +8,12 @@ import AvisoVersion from './AvisoVersion.jsx'
 
 const ROLES = { asesor: 'Asesor', supervisor: 'Supervisor', jefe: 'Jefe de ventas', gerencia: 'Gerencia' }
 
+// El supervisor no vende: visita colegios (directores y pasajes) y sigue al equipo.
 // "Registrar" anota a una persona (y de ahí sigue a la venta si compró);
 // "Cartera" es la lista de quienes quedaron en seguimiento.
 function enlaces(rol) {
   if (rol === 'asesor') return [['/hoy', 'Hoy'], ['/visita', 'Visita'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/avance', 'Mi avance']]
-  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/visita', 'Visita'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo']]
+  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/visita', 'Colegios'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo']]
   if (rol === 'jefe') return [['/panel', 'Panel'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo'], ['/ajustes', 'Ajustes']]
   return [['/panel', 'Panel']]
 }
@@ -30,7 +31,7 @@ export default function Layout() {
   }, [])
 
   useEffect(() => {
-    if (rol === 'gerencia' || rol === 'jefe') return
+    if (rol !== 'asesor') return
     let activo = true
     const contar = async () => {
       const { count } = await supabase

@@ -22,6 +22,8 @@ function InicioSegunRol() {
 }
 
 const CAMPO = ['asesor', 'supervisor', 'jefe']
+// El supervisor no registra personas ni ventas: eso es del asesor.
+const VENDE = ['asesor', 'jefe']
 
 export default function App() {
   const { cargando } = useSesion()
@@ -40,14 +42,17 @@ export default function App() {
 
           <Route element={<Layout />}>
             <Route element={<RutaProtegida roles={CAMPO} />}>
-              <Route path="/hoy" element={<Hoy />} />
               <Route path="/visita" element={<Visita />} />
-              <Route path="/venta" element={<Venta />} />
               <Route path="/seguimiento" element={<Seguimiento />} />
+              <Route path="/seguimiento/:id" element={<Prospecto />} />
+            </Route>
+
+            <Route element={<RutaProtegida roles={VENDE} />}>
+              <Route path="/hoy" element={<Hoy />} />
+              <Route path="/venta" element={<Venta />} />
               <Route path="/docente" element={<NuevoProspecto />} />
               <Route path="/seguimiento/nuevo" element={<Navigate to="/docente" replace />} />
               <Route path="/seguimiento/importar" element={<ImportarProspectos />} />
-              <Route path="/seguimiento/:id" element={<Prospecto />} />
               <Route path="/avance" element={<Avance />} />
             </Route>
 

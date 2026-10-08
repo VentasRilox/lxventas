@@ -17,6 +17,7 @@ export default function Prospecto() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { perfil, cfg, plantillas, rol } = useSesion()
+  const soloVer = rol === 'supervisor'
   const [p, setP] = useState(null)
   const [contactos, setContactos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -142,6 +143,7 @@ export default function Prospecto() {
         </p>
       </div>
       {error && <p className="aviso aviso--crit">{error}</p>}
+      {soloVer && <p className="small muted">Solo revisas: el seguimiento y la venta los hace el asesor.</p>}
       {!abierto && (
         <p className={`aviso ${p.estado === 'ganado' ? 'aviso--ok' : ''}`}>
           {p.estado === 'ganado' && 'Compró.'}
@@ -152,13 +154,13 @@ export default function Prospecto() {
 
       <section>
         <h2>Interés</h2>
-        <Chips opciones={INTERESES} valor={p.interes} disabled={!abierto} alCambiar={async (v) => { if (v && (await actualizar({ interes: v }))) cargar() }} />
+        <Chips opciones={INTERESES} valor={p.interes} disabled={!abierto || soloVer} alCambiar={async (v) => { if (v && (await actualizar({ interes: v }))) cargar() }} />
         <h2>Su duda principal</h2>
-        <Chips opciones={MOTIVOS} valor={p.motivo ?? ''} disabled={!abierto} alCambiar={async (v) => { if (await actualizar({ motivo: v || null })) cargar() }} />
+        <Chips opciones={MOTIVOS} valor={p.motivo ?? ''} disabled={!abierto || soloVer} alCambiar={async (v) => { if (await actualizar({ motivo: v || null })) cargar() }} />
         {p.comentario && <p className="muted">{p.comentario}</p>}
       </section>
 
-      {abierto && (
+      {abierto && !soloVer && (
         <section>
           <h2>
             Contacto {Math.min(p.paso, ULTIMO_PASO)} de {ULTIMO_PASO}
@@ -178,7 +180,7 @@ export default function Prospecto() {
         </section>
       )}
 
-      {abierto && (
+      {abierto && !soloVer && (
         <section>
           <h2>¿Qué pasó?</h2>
           <label htmlFor="nota">
@@ -215,7 +217,7 @@ export default function Prospecto() {
         </section>
       )}
 
-      {!abierto && p.estado !== 'ganado' && (
+      {!abierto && !soloVer && p.estado !== 'ganado' && (
         <button type="button" className="btn btn--sec" onClick={async () => { if (await actualizar({ estado: 'abierto', paso: 2, proximo_contacto: hoy, motivo_perdida: null })) cargar() }}>
           Reactivar el seguimiento
         </button>

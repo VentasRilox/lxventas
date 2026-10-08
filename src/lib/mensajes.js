@@ -20,19 +20,19 @@ export function textoVisita(f, ctx) {
     'FECHA: ' + fechaMensaje(f.fecha, '/'),
     'HORA: ' + horaMensaje(f.hora),
     'NIVELES: ' + mayus(sin ? '' : f.niveles),
-    'TOTAL DE DOCENTES: ' + (sin ? 'CERO' : mayus(f.contactos) || '0'),
+    !ctx.supervisor && 'TOTAL DE DOCENTES: ' + (sin ? 'CERO' : mayus(f.contactos) || '0'),
     'DIRECCIÓN: ' + mayus(f.direccion),
     'REFERENCIA: ' + mayus(f.referencia),
     'ZONA: ' + mayus(ctx.zona),
     'UGEL: ' + mayus(ctx.zona),
-    'MOVILIDAD: ' + (mayus(f.movilidad) || '0'),
-    'VENTA: ' + (sin ? 'CERO' : mayus(f.ventas_declaradas) || '0'),
-    'ASESOR(A): ' + mayus(ctx.asesor),
-    'PSI: ' + mayus(sin ? '' : f.psi),
+    (ctx.supervisor ? 'PASAJES: ' : 'MOVILIDAD: ') + (mayus(f.movilidad) || '0'),
+    !ctx.supervisor && 'VENTA: ' + (sin ? 'CERO' : mayus(f.ventas_declaradas) || '0'),
+    (ctx.supervisor ? 'SUPERVISOR(A): ' : 'ASESOR(A): ') + mayus(ctx.asesor),
+    !ctx.supervisor && 'PSI: ' + mayus(sin ? '' : f.psi),
     '',
     'OBSERVACIÓN: ' + mayus(f.observacion),
     mayus(ctx.firma),
-  ].join('\n')
+  ].filter((l) => l !== false).join('\n')
 }
 
 // Cierre de venta, en el formato de la empresa.
