@@ -83,7 +83,7 @@ export default function MisCobros() {
       <p className="muted small">
         {pendientes.length
           ? `${pendientes.length === 1 ? 'Tienes 1 venta' : `Tienes ${pendientes.length} ventas`} sin pago de ${soles(cfg?.primera_cuota_centimos ?? 13000)}. No cuentan para tu meta hasta que el pago esté confirmado.`
-          : 'Tu supervisor está confirmando estos pagos.'}
+          : 'Ya avisaste que pagaron. Tu supervisor revisa que el pago figure en el Yape o la cuenta y lo confirma. Cuando lo haga, la venta pasa a válida y suma a tu meta.'}
       </p>
       {fallo && <p className="aviso aviso--crit">{fallo}</p>}
       <ul className="lista">
