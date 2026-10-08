@@ -74,3 +74,22 @@ export function useAsistencias(desde, hasta) {
 
   return { ...estado, recargar: cargar }
 }
+
+// Nombre de cada persona del equipo, por su id (para mostrar quién es el asesor).
+export function useNombres(activo = true) {
+  const [nombres, setNombres] = useState({})
+  useEffect(() => {
+    if (!activo) return
+    let vigente = true
+    supabase
+      .from('perfiles')
+      .select('id, nombre')
+      .then(({ data }) => {
+        if (vigente && data) setNombres(Object.fromEntries(data.map((p) => [p.id, p.nombre])))
+      })
+    return () => {
+      vigente = false
+    }
+  }, [activo])
+  return nombres
+}

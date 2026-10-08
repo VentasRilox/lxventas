@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
+import { useNombres } from '../lib/useDatos'
 import { supabase } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaDeMarca, fechaLocalHoy, sumarDias } from '../lib/fecha'
@@ -18,6 +19,7 @@ export default function Prospecto() {
   const navigate = useNavigate()
   const { perfil, cfg, plantillas, rol } = useSesion()
   const soloVer = !puedeVender(rol, cfg)
+  const nombres = useNombres(rol !== 'asesor')
   const [p, setP] = useState(null)
   const [contactos, setContactos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -140,6 +142,7 @@ export default function Prospecto() {
         <p className="muted">
           {[titulo(p.puesto), p.lugar, titulo(p.condicion), p.celular].filter(Boolean).join(' · ')}
           {p.referido_por && ` · referido por ${titulo(p.referido_por)}`}
+          {rol !== 'asesor' && p.asesor_id !== perfil.id && nombres[p.asesor_id] && ` · asesor: ${titulo(nombres[p.asesor_id])}`}
         </p>
       </div>
       {error && <p className="aviso aviso--crit">{error}</p>}
@@ -185,7 +188,7 @@ export default function Prospecto() {
             </a>
             {p.celular && <a className="btn btn--sec" href={`tel:+51${p.celular}`}>Llamar</a>}
           </div>
-          {!mio && rol !== 'asesor' && <p className="small muted">Este {contacto.toLowerCase()} es de otro asesor. Si le escribes, queda anotado a tu nombre.</p>}
+          {!mio && rol !== 'asesor' && <p className="small muted">Este {contacto.toLowerCase()} es de {nombres[p.asesor_id] ? titulo(nombres[p.asesor_id]) : 'otro asesor'}. Si le escribes, queda anotado a tu nombre.</p>}
         </section>
       )}
 

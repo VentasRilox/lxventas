@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
-import { useProspectos } from '../lib/useDatos'
+import { useNombres, useProspectos } from '../lib/useDatos'
 import { fechaCorta, fechaLocalHoy } from '../lib/fecha'
 import { ESTADO_CLIENTE, puedeVender, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
@@ -21,14 +21,17 @@ export default function Seguimiento() {
   const [busca, setBusca] = useState('')
   const hoy = fechaLocalHoy()
   const soloVer = !puedeVender(rol, cfg)
+  const verAsesor = rol !== 'asesor'
+  const nombres = useNombres(verAsesor)
+  const asesorDe = (p) => (p.asesor_id === perfil.id ? 'tuyo' : titulo(nombres[p.asesor_id] ?? 'asesor'))
   const contacto = cfg?.nombre_contacto ?? 'Contacto'
 
   const lista = useMemo(() => {
     const q = busca.trim().toUpperCase()
     return prospectos
       .filter((p) => p.estado === estado)
-      .filter((p) => !q || p.nombre.includes(q) || (p.lugar ?? '').includes(q) || (p.celular ?? '').includes(q))
-  }, [prospectos, estado, busca])
+      .filter((p) => !q || p.nombre.includes(q) || (p.lugar ?? '').includes(q) || (p.celular ?? '').includes(q) || (nombres[p.asesor_id] ?? '').includes(q))
+  }, [prospectos, estado, busca, nombres])
 
   if (cargando) return <PantallaEstado mensaje="Cargando..." />
 
@@ -58,7 +61,7 @@ export default function Seguimiento() {
           </button>
         ))}
       </div>
-      <input placeholder="Buscar por nombre, celular o lugar" value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar" />
+      <input placeholder={verAsesor ? 'Buscar por nombre, celular, lugar o asesor' : 'Buscar por nombre, celular o lugar'} value={busca} onChange={(e) => setBusca(e.target.value)} aria-label="Buscar" />
 
       <ul className="lista">
         {lista.map((p) => (
@@ -66,7 +69,7 @@ export default function Seguimiento() {
             <Link className="item" to={`/seguimiento/${p.id}`}>
               {titulo(p.nombre)}
               <small>
-                {[p.puesto && p.puesto !== 'DOCENTE' && titulo(p.puesto), p.lugar, titulo(p.condicion), rol !== 'asesor' && p.asesor_id !== perfil.id && 'de otro asesor'].filter(Boolean).join(' · ')}
+                {[p.puesto && p.puesto !== 'DOCENTE' && titulo(p.puesto), p.lugar, titulo(p.condicion), verAsesor && `asesor: ${asesorDe(p)}`].filter(Boolean).join(' · ')}
                 {p.estado === 'abierto' && p.proximo_contacto && ` · llamar el ${fechaCorta(p.proximo_contacto)}`}
               </small>
             </Link>
