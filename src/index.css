@@ -240,3 +240,10 @@ input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
 .item .persona__extra { color: var(--accent); font-weight: 500; }
 .item .persona__nota { font-style: italic; }
 .kpis.kpis--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+
+/* Equipo: a quién está vinculada cada UGEL. */
+.vinculo { border-top: 1px solid var(--line); margin-top: 10px; padding-top: 8px; display: grid; gap: 4px; font-size: var(--t-sm); }
+.vinculo p { margin: 0; }
+.vinculo .ok, p.ok { color: var(--ok); font-weight: 500; }
+.vinculo .falta, p.falta { color: var(--warn); font-weight: 600; }
+.grupo + .grupo { margin-top: 18px; }
