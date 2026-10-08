@@ -8,6 +8,7 @@ import { fechaCorta, fechaDeMarca, fechaLocalHoy, sumarDias } from '../lib/fecha
 import { INTERESES, MOTIVOS, RESULTADOS_CONTACTO, diasSegunInteres, puedeVender, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, fechaCorteTexto, llenarPlantilla, plantillaPara } from '../lib/mensajes'
 import RespuestasDuda from '../components/RespuestasDuda.jsx'
+import EnviarPrograma from '../components/EnviarPrograma.jsx'
 import Chips from '../components/Chips.jsx'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
@@ -153,6 +154,7 @@ export default function Prospecto() {
           <a className="btn btn--sec" href={enlaceWhatsApp(`Buenas, ${titulo(p.nombre).split(' ')[0]}. Le saluda ${titulo(perfil.nombre)}${cfg?.firma ? ', de ' + cfg.firma : ''}.`, p.celular)} target="_blank" rel="noopener noreferrer">WhatsApp</a>
         </div>
       )}
+      {p.celular && abierto && <EnviarPrograma nombre={p.nombre} celular={p.celular} lugar={p.lugar} secundario={!soloVer} />}
       {soloVer && <p className="small muted">{p.celular ? 'Puedes llamar o escribirle para apoyar.' : 'No tiene celular registrado.'} El seguimiento y la venta los registra el asesor.</p>}
       {!abierto && (
         <p className={`aviso ${p.estado === 'ganado' ? 'aviso--ok' : ''}`}>

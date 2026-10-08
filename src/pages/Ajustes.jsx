@@ -4,9 +4,10 @@ import { supabase } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { MOTIVOS } from '../lib/reglas'
 import { RESPUESTAS_BASE } from '../lib/respuestas'
+import { PASO_PROGRAMA, TEXTO_PROGRAMA } from '../lib/programa'
 import Campo from '../components/Campo.jsx'
 
-const PASOS = { 1: 'Contacto 1 · el mismo día', 2: 'Contacto 2', 3: 'Contacto 3', 4: 'Contacto 4 · fecha límite', 9: 'Al cerrar la venta' }
+const PASOS = { 0: 'Información del programa (botón "Enviar información del programa")', 1: 'Contacto 1 · el mismo día', 2: 'Contacto 2', 3: 'Contacto 3', 4: 'Contacto 4 · fecha límite', 9: 'Al cerrar la venta' }
 
 export default function Ajustes() {
   const { cfg, plantillas, recargarEmpresa } = useSesion()
@@ -23,7 +24,7 @@ export default function Ajustes() {
   }, [cfg, f])
 
   useEffect(() => {
-    setTextos(Object.fromEntries(plantillas.map((p) => [p.id, p.texto])))
+    setTextos({ nuevo_programa: TEXTO_PROGRAMA, ...Object.fromEntries(plantillas.map((p) => [p.id, p.texto])) })
   }, [plantillas])
 
   if (!f) return null
@@ -62,6 +63,10 @@ export default function Ajustes() {
       })
       .eq('empresa_id', cfg.empresa_id)
     let fallo = error
+    if (!fallo && !plantillas.some((p) => p.paso === PASO_PROGRAMA) && textos.nuevo_programa?.trim()) {
+      const r = await supabase.from('plantillas').insert({ empresa_id: cfg.empresa_id, paso: PASO_PROGRAMA, motivo: null, titulo: 'Información del programa', texto: textos.nuevo_programa })
+      fallo = r.error
+    }
     for (const p of plantillas) {
       if (fallo) break
       if (textos[p.id] !== p.texto) {
@@ -141,11 +146,17 @@ export default function Ajustes() {
         <p className="small muted">
           Se llenan solos: {'{nombre}'}, {'{asesor}'}, {'{firma}'}, {'{producto}'}, {'{lugar}'} y {'{fecha_corte}'}. Escribe solo lo que sea cierto de tu producto.
         </p>
+        {!plantillas.some((p) => p.paso === PASO_PROGRAMA) && (
+          <label htmlFor="pl_programa">
+            {PASOS[PASO_PROGRAMA]}
+            <textarea id="pl_programa" style={{ minHeight: 320 }} value={textos.nuevo_programa ?? ''} onChange={(e) => setTextos({ ...textos, nuevo_programa: e.target.value })} />
+          </label>
+        )}
         {plantillas.map((p) => (
           <label key={p.id} htmlFor={'pl_' + p.id}>
             {PASOS[p.paso] ?? `Contacto ${p.paso}`}
             {p.motivo ? ` · si su duda es: ${(MOTIVOS.find((m) => m[0] === p.motivo)?.[1] ?? p.motivo).toLowerCase()}` : ''}
-            <textarea id={'pl_' + p.id} style={{ minHeight: 120 }} value={textos[p.id] ?? ''} onChange={(e) => setTextos({ ...textos, [p.id]: e.target.value })} />
+            <textarea id={'pl_' + p.id} style={{ minHeight: p.paso === PASO_PROGRAMA ? 320 : 120 }} value={textos[p.id] ?? ''} onChange={(e) => setTextos({ ...textos, [p.id]: e.target.value })} />
           </label>
         ))}
 

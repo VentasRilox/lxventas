@@ -9,6 +9,7 @@ import { INTERESES, MOTIVOS, diasSegunInteres, mayus, titulo } from '../lib/regl
 import { errorCelular } from '../lib/validar'
 import Campo from '../components/Campo.jsx'
 import RespuestasDuda from '../components/RespuestasDuda.jsx'
+import EnviarPrograma from '../components/EnviarPrograma.jsx'
 import Chips from '../components/Chips.jsx'
 
 // Un solo lugar para registrar a cada persona con la que habló el asesor.
@@ -112,7 +113,7 @@ export default function NuevoProspecto() {
       return
     }
     window.dispatchEvent(new Event('lxv-seguimiento'))
-    setHecho({ id: r.id ?? null, nombre: fila.nombre, interesado, volver, pendiente: Boolean(r.pendiente) })
+    setHecho({ id: r.id ?? null, nombre: fila.nombre, celular: fila.celular, lugar: fila.lugar, interesado, volver, pendiente: Boolean(r.pendiente) })
     setF(vacio(f.lugar))
     window.scrollTo(0, 0)
   }
@@ -127,9 +128,10 @@ export default function NuevoProspecto() {
             {titulo(hecho.nombre)} quedó {hecho.interesado ? `en tu cartera. Te avisaré el ${fechaCorta(hecho.volver)} para que lo llames.` : 'anotado como no interesado.'}
             {hecho.pendiente && ' Sin señal: se subirá solo cuando haya internet.'}
           </p>
+          {hecho.interesado && <EnviarPrograma nombre={hecho.nombre} celular={hecho.celular} lugar={hecho.lugar} />}
           {hecho.interesado && hecho.id && (
             <Link className="btn btn--sec btn--chico" to={`/seguimiento/${hecho.id}`}>
-              Enviarle ahora el mensaje de agradecimiento
+              Ver su ficha
             </Link>
           )}
         </div>

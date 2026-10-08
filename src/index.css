@@ -230,3 +230,13 @@ input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
 .respuestas { background: var(--ok-bg); border-left: 4px solid var(--accent); border-radius: 10px; padding: 10px 14px; }
 .respuestas .etiqueta { margin: 0 0 4px; }
 .respuestas ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+
+.programa { display: grid; gap: 6px; }
+.programa .enlace { justify-self: start; }
+
+/* Persona en la cartera: nombre y hasta tres líneas de datos. */
+.item .persona__nombre { font-weight: 600; }
+.item small { display: block; }
+.item .persona__extra { color: var(--accent); font-weight: 500; }
+.item .persona__nota { font-style: italic; }
+.kpis.kpis--3 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
