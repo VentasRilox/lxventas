@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { useProspectos } from '../lib/useDatos'
 import { diasEntre, fechaCorta, fechaLocalHoy } from '../lib/fecha'
-import { puntajeProspecto, titulo } from '../lib/reglas'
+import { ESTADO_CLIENTE, puntajeProspecto, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 import Jornada from '../components/Jornada.jsx'
 import MisCobros from '../components/MisCobros.jsx'
@@ -33,7 +33,7 @@ export default function Hoy() {
 
       <div>
         <h1>{tocan.length ? `Hoy te toca escribir a ${tocan.length} ${contacto}${tocan.length === 1 ? '' : 's'}` : 'Hoy no tienes contactos pendientes'}</h1>
-        <p className="muted">Arriba están los que tienen más opción de cerrar: nombrados y con interés alto.</p>
+        <p className="muted">Arriba están los que tienen más opción de cerrar: nombrados y calientes.</p>
       </div>
       {error && <p className="aviso aviso--crit">{error}</p>}
 
@@ -45,7 +45,7 @@ export default function Hoy() {
               <Link className="item" to={`/seguimiento/${p.id}`}>
                 {titulo(p.nombre)}
                 <small>
-                  {[p.puesto && p.puesto !== 'DOCENTE' && titulo(p.puesto), p.lugar, titulo(p.condicion), `interés ${p.interes}`, `contacto ${p.paso} de 4`].filter(Boolean).join(' · ')}
+                  {[p.puesto && p.puesto !== 'DOCENTE' && titulo(p.puesto), p.lugar, titulo(p.condicion), (ESTADO_CLIENTE[p.interes] ?? '').toLowerCase(), `contacto ${p.paso} de 4`].filter(Boolean).join(' · ')}
                 </small>
               </Link>
               <span className={`pill ${atraso > 0 ? 'crit' : 'warn'}`}>{atraso > 0 ? `${atraso} d de atraso` : 'Hoy'}</span>

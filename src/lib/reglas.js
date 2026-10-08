@@ -151,11 +151,13 @@ export function estadoAvance(valor, meta, avance) {
   return ['crit', 'Muy atrasada']
 }
 
+// Estado del cliente, con los términos del IPD. En la base se guarda alto/medio/bajo.
 export const INTERESES = [
-  ['alto', 'Alto'],
-  ['medio', 'Medio'],
-  ['bajo', 'Bajo'],
+  ['alto', 'Caliente'],
+  ['medio', 'Tibio'],
+  ['bajo', 'Frío'],
 ]
+export const ESTADO_CLIENTE = { alto: 'Caliente', medio: 'Tibio', bajo: 'Frío' }
 
 export const MOTIVOS = [
   ['PRECIO', 'Precio'],

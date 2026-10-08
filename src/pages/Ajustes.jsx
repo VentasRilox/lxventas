@@ -115,9 +115,9 @@ export default function Ajustes() {
 
         <h2>Días hasta el siguiente contacto</h2>
         <div className="grid2">
-          <Campo etiqueta="Interés alto" nombre="dias_interes_alto" f={f} setF={setF} inputMode="numeric" />
-          <Campo etiqueta="Interés medio" nombre="dias_interes_medio" f={f} setF={setF} inputMode="numeric" />
-          <Campo etiqueta="Interés bajo" nombre="dias_interes_bajo" f={f} setF={setF} inputMode="numeric" />
+          <Campo etiqueta="Cliente caliente" nombre="dias_interes_alto" f={f} setF={setF} inputMode="numeric" />
+          <Campo etiqueta="Cliente tibio" nombre="dias_interes_medio" f={f} setF={setF} inputMode="numeric" />
+          <Campo etiqueta="Cliente frío" nombre="dias_interes_bajo" f={f} setF={setF} inputMode="numeric" />
           <Campo etiqueta="Días para avisar al supervisor" nombre="dias_escalar_supervisor" f={f} setF={setF} inputMode="numeric" />
         </div>
 

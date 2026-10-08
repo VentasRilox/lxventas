@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { useProspectos } from '../lib/useDatos'
 import { fechaCorta, fechaLocalHoy } from '../lib/fecha'
-import { puedeVender, titulo } from '../lib/reglas'
+import { ESTADO_CLIENTE, puedeVender, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
 const ESTADOS = [
@@ -73,7 +73,7 @@ export default function Seguimiento() {
             {p.estado === 'abierto' && p.proximo_contacto && p.proximo_contacto <= hoy ? (
               <span className="pill crit">{p.proximo_contacto < hoy ? 'Atrasado' : 'Hoy'}</span>
             ) : (
-              <span className={`pill ${PILL[p.interes]}`}>Interés {p.interes}</span>
+              <span className={`pill ${PILL[p.interes]}`}>{ESTADO_CLIENTE[p.interes]}</span>
             )}
           </li>
         ))}

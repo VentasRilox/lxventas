@@ -236,7 +236,7 @@ export default function Panel() {
                     <Kpi t="Valor contratado" v={soles(C.tot.val * valorVenta)} s={`${soles(valorVenta)} por venta válida`} />
                   )}
                   {rol === 'gerencia' && (
-                    <Kpi t={`${contacto}s de interés alto`} v={seguimiento.prospectos.filter((p) => p.estado === 'abierto' && p.interes === 'alto').length} s="En seguimiento, por cerrar" />
+                    <Kpi t={`${contacto}s calientes`} v={seguimiento.prospectos.filter((p) => p.estado === 'abierto' && p.interes === 'alto').length} s="En seguimiento, por cerrar" />
                   )}
                 </div>
               </section>
@@ -563,10 +563,10 @@ function VistaSeguimiento({ prospectos, recargar, perfiles, nombreDe, cfg, rol, 
                 {titulo(p.nombre)}
                 <small>{[p.lugar, nombreDe(p.asesor_id), `${diasEntre(p.creado_en.slice(0, 10), hoy)} días sin cerrar`].filter(Boolean).join(' · ')}</small>
               </Link>
-              <span className="pill ok">Interés alto</span>
+              <span className="pill ok">Caliente</span>
             </li>
           ))}
-          {intervenir.length === 0 && <li><span className="muted">Nadie de interés alto lleva {escalar} días o más sin cerrar.</span></li>}
+          {intervenir.length === 0 && <li><span className="muted">Ningún cliente caliente lleva {escalar} días o más sin cerrar.</span></li>}
         </ul>
       </section>
 

@@ -97,7 +97,7 @@ export default function ImportarProspectos() {
         ← Volver a la lista
       </Link>
       <h1>Agregar varios {contacto}s de una vez</h1>
-      <p className="muted">Pega la lista, una persona por línea, con su nombre y su celular. Después abres a cada uno para poner su interés y su duda.</p>
+      <p className="muted">Pega la lista, una persona por línea, con su nombre y su celular. Después abres a cada uno para marcar si está frío, tibio o caliente, y su duda.</p>
 
       {rol !== 'asesor' && (
         <label htmlFor="i_asesor">
@@ -116,7 +116,7 @@ export default function ImportarProspectos() {
         <input id="i_lugar" value={lugar} onChange={(e) => setLugar(e.target.value)} autoComplete="off" />
       </label>
 
-      <h2>Interés inicial</h2>
+      <h2>Estado inicial del cliente</h2>
       <Chips opciones={INTERESES} valor={interes} alCambiar={(v) => setInteres(v || 'medio')} />
 
       <label htmlFor="i_lista">

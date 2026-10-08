@@ -161,7 +161,7 @@ export default function NuevoProspecto() {
             alCambiar={(v) => setF({ ...f, volver: v })}
           />
           <Campo etiqueta="U otra fecha" nombre="volver" f={{ volver }} setF={(cambio) => setF((antes) => ({ ...antes, volver: cambio({ volver }).volver }))} type="date" min={hoy} />
-          <p className="etiqueta">Interés</p>
+          <p className="etiqueta">¿Cómo quedó el cliente?</p>
           <Chips opciones={INTERESES} valor={f.interes} alCambiar={(v) => setF({ ...f, interes: v || 'medio', volver: '' })} />
           <p className="etiqueta">Su duda principal (para elegirle el mensaje)</p>
           <Chips opciones={MOTIVOS} valor={f.motivo} alCambiar={(v) => setF({ ...f, motivo: v })} />

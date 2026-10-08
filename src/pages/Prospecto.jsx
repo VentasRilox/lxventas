@@ -159,7 +159,7 @@ export default function Prospecto() {
       )}
 
       <section>
-        <h2>Interés</h2>
+        <h2>Estado del cliente</h2>
         <Chips opciones={INTERESES} valor={p.interes} disabled={!abierto || soloVer} alCambiar={async (v) => { if (v && (await actualizar({ interes: v }))) cargar() }} />
         <h2>Su duda principal</h2>
         <Chips opciones={MOTIVOS} valor={p.motivo ?? ''} disabled={!abierto || soloVer} alCambiar={async (v) => { if (await actualizar({ motivo: v || null })) cargar() }} />
