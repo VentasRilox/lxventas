@@ -22,11 +22,11 @@ function InicioSegunRol() {
 }
 
 const CAMPO = ['asesor', 'supervisor', 'jefe']
-// El supervisor no registra personas ni ventas: eso es del asesor.
+// El supervisor no registra personas ni ventas, salvo que el jefe lo active en Ajustes.
 const VENDE = ['asesor', 'jefe']
 
 export default function App() {
-  const { cargando } = useSesion()
+  const { cargando, cfg } = useSesion()
 
   if (cargando) {
     return <PantallaEstado mensaje="Cargando..." />
@@ -47,7 +47,7 @@ export default function App() {
               <Route path="/seguimiento/:id" element={<Prospecto />} />
             </Route>
 
-            <Route element={<RutaProtegida roles={VENDE} />}>
+            <Route element={<RutaProtegida roles={cfg?.supervisor_registra ? CAMPO : VENDE} />}>
               <Route path="/hoy" element={<Hoy />} />
               <Route path="/venta" element={<Venta />} />
               <Route path="/docente" element={<NuevoProspecto />} />

@@ -54,6 +54,7 @@ export default function Ajustes() {
         primera_cuota_centimos: Math.round((parseFloat(f.primera_cuota) || 0) * 100),
         hora_tolerancia: /^\d{2}:\d{2}$/.test(f.hora_tolerancia ?? '') ? f.hora_tolerancia : '08:15',
         dias_alerta_cuota: entero(f.dias_alerta_cuota, 3),
+        ...('supervisor_registra' in cfg ? { supervisor_registra: Boolean(f.supervisor_registra) } : {}),
         dominio_correo: String(f.dominio_correo ?? '').trim().toLowerCase().replace(/^@/, '') || null,
       })
       .eq('empresa_id', cfg.empresa_id)
@@ -92,6 +93,17 @@ export default function Ajustes() {
         <h2>Accesos del equipo</h2>
         <Campo etiqueta="Dominio de los correos (ej.: marketing.com)" nombre="dominio_correo" f={f} setF={setF} autoCapitalize="none" autoComplete="off" placeholder="lxventas.com" />
         <p className="small muted">Los accesos nuevos se crean como usuario@dominio. Los que ya existen no cambian.</p>
+
+        {'supervisor_registra' in cfg && (
+          <>
+            <h2>Supervisores</h2>
+            <label className="casilla" htmlFor="c_supervisor_registra">
+              <input id="c_supervisor_registra" type="checkbox" checked={Boolean(f.supervisor_registra)} onChange={(e) => setF({ ...f, supervisor_registra: e.target.checked })} />
+              <span>El supervisor también puede registrar personas y ventas</span>
+            </label>
+            <p className="small muted">Apagado: el supervisor solo visita colegios, revisa a su equipo y puede llamar o escribir. Enciéndelo cuando lo necesites y guarda.</p>
+          </>
+        )}
 
         <h2>Cómo llama tu empresa a cada cosa</h2>
         <div className="grid2">

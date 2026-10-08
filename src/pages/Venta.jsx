@@ -6,6 +6,7 @@ import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora, sumarDias } from '../lib/fecha'
 import { DOCUMENTOS, MEDIOS_CUOTA, cumpleCondiciones, faltaContrato, mayus, soles, titulo } from '../lib/reglas'
+import { errorCelular } from '../lib/validar'
 import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
 import Chips from '../components/Chips.jsx'
@@ -64,7 +65,7 @@ export default function Venta() {
     !ventaId && f.cuota === 'Todavía no' && !f.cuota_compromiso && 'qué día se comprometió a pagar',
     !ventaId && f.cuota === 'Todavía no' && f.cuota_compromiso && f.cuota_compromiso < f.fecha && 'una fecha de pago que no sea anterior a la venta',
     dni.length !== 8 && 'DNI de 8 dígitos',
-    celular && celular.length !== 9 && 'celular de 9 dígitos',
+    errorCelular(celular) && 'celular de 9 dígitos que empiece con 9',
   ].filter(Boolean)
 
   // Si viene de un prospecto, sus datos ya llegan llenos.
@@ -235,8 +236,8 @@ export default function Venta() {
         <h2>{cfg?.nombre_contacto ?? 'Contacto'}</h2>
         <div className="grid2">
           <Campo etiqueta="Nombre completo" nombre="nombre" f={f} setF={setF} full autoComplete="off" />
-          <Campo etiqueta="DNI" nombre="dni" f={f} setF={setF} inputMode="numeric" maxLength={8} autoComplete="off" />
-          <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="numeric" maxLength={9} autoComplete="off" />
+          <Campo etiqueta="DNI" nombre="dni" f={f} setF={setF} solo="dni" />
+          <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} solo="celular" />
           <Campo etiqueta="Correo electrónico" nombre="correo" f={f} setF={setF} full type="email" inputMode="email" autoComplete="off" />
           <Campo etiqueta={lugarNombre} nombre="lugar" f={f} setF={setF} full autoComplete="off" />
         </div>

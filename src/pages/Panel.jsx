@@ -10,6 +10,7 @@ import { BASICO, MOTIVOS, bonoSupervisor, esCaida, esValida, estadoAvance, estad
 import PantallaEstado from '../components/PantallaEstado.jsx'
 import Cobros from './panel/Cobros.jsx'
 import Asistencia from './panel/Asistencia.jsx'
+import DescargarExcel from '../components/DescargarExcel.jsx'
 import Registros from './panel/Registros.jsx'
 
 const TABS = {
@@ -133,7 +134,7 @@ function nombreZona(zona, a) {
 }
 
 export default function Panel() {
-  const { rol, perfil, cfg, zonas } = useSesion()
+  const { rol, perfil, cfg, zonas, empresaNombre } = useSesion()
   const hoy = fechaLocalHoy()
   const [salto, setSalto] = useState(0)
   const [tab, setTab] = useState('resumen')
@@ -195,6 +196,7 @@ export default function Panel() {
           </button>
         </div>
       </div>
+      {(rol === 'jefe' || rol === 'gerencia') && <DescargarExcel desde={C.desde} hasta={C.hasta} perfiles={perfiles} zonas={zonas} cfg={cfg} empresa={empresaNombre} />}
       <div className="periodo">
         <button type="button" className="btn btn--sec btn--chico" aria-label="Periodo anterior" disabled={!C.hayAnterior} onClick={() => setSalto(salto - 1)}>‹</button>
         <div>

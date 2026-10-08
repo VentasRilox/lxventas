@@ -6,6 +6,7 @@ import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaLocalHoy, sumarDias } from '../lib/fecha'
 import { INTERESES, MOTIVOS, diasSegunInteres, mayus, titulo } from '../lib/reglas'
+import { errorCelular } from '../lib/validar'
 import Campo from '../components/Campo.jsx'
 import Chips from '../components/Chips.jsx'
 
@@ -47,8 +48,8 @@ export default function NuevoProspecto() {
   const falta = [
     !mayus(f.nombre) && 'nombre',
     !f.resultado && 'qué pasó',
-    f.resultado === 'interesado' && celular.length !== 9 && 'celular de 9 dígitos, para poder escribirle',
-    f.resultado !== 'interesado' && celular.length > 0 && celular.length !== 9 && 'celular de 9 dígitos',
+    f.resultado === 'interesado' && (!celular || errorCelular(celular)) && 'celular de 9 dígitos que empiece con 9, para poder escribirle',
+    f.resultado !== 'interesado' && errorCelular(celular) && 'celular de 9 dígitos que empiece con 9',
     f.resultado === 'no' && !f.motivo && 'el motivo',
   ].filter(Boolean)
 
@@ -137,7 +138,7 @@ export default function NuevoProspecto() {
         <h2>1. ¿Quién es?</h2>
         <div className="grid2">
           <Campo etiqueta="Nombre completo" nombre="nombre" f={f} setF={setF} full autoComplete="off" />
-          <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="numeric" maxLength={9} autoComplete="off" />
+          <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} solo="celular" />
           <Campo etiqueta={`${lugarNombre} (se recuerda)`} nombre="lugar" f={f} setF={setF} autoComplete="off" />
         </div>
         <p className="etiqueta">Puesto</p>

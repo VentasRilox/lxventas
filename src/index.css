@@ -203,3 +203,11 @@ input[type='date']::-webkit-date-and-time-value, input[type='time']::-webkit-dat
 td select { min-width: 150px; }
 td input { min-width: 72px; }
 td .acciones { flex-wrap: nowrap; }
+
+/* Aviso bajo un campo con dígitos de más o de menos. */
+.campo__error { display: block; margin-top: 4px; color: var(--crit, #b3261e); font-size: var(--t-sm); font-weight: 500; }
+input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
+
+/* Casilla de sí/no con su texto al costado. */
+.casilla { display: flex; align-items: center; gap: 10px; font-weight: 500; }
+.casilla input { width: 22px; height: 22px; flex: none; margin: 0; }

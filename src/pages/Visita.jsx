@@ -6,6 +6,7 @@ import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora } from '../lib/fecha'
 import { mayus, visitaConIngreso } from '../lib/reglas'
+import { errorCelular } from '../lib/validar'
 import { enlaceWhatsApp, textoVisita } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
 import Chips from '../components/Chips.jsx'
@@ -38,7 +39,7 @@ export default function Visita() {
   const ctx = { asesor: perfil.nombre, zona: zona?.nombre ?? '', firma: cfg?.firma ?? '', supervisor: sup }
   const datos = { ...f, niveles: f.niveles.join(', ') }
   const texto = textoVisita(datos, ctx)
-  const falta = [!mayus(f.resultado) && 'resultado', !mayus(f.lugar) && lugarNombre.toLowerCase()].filter(Boolean)
+  const falta = [!mayus(f.resultado) && 'resultado', !mayus(f.lugar) && lugarNombre.toLowerCase(), errorCelular(f.celular) && 'celular del director de 9 dígitos'].filter(Boolean)
 
   // Lugares ya visitados por este asesor: para completar sus datos al elegirlos
   // y para seguir la numeración de visitas del día.
@@ -156,7 +157,7 @@ export default function Visita() {
           <summary>Datos del {lugarNombre.toLowerCase()}: director, celular y dirección</summary>
           <div className="grid2">
             <Campo etiqueta="Director(a)" nombre="director" f={f} setF={setF} full />
-            <Campo etiqueta="Celular" nombre="celular" f={f} setF={setF} inputMode="tel" />
+            <Campo etiqueta="Celular del director" nombre="celular" f={f} setF={setF} solo="celular" />
             <Campo etiqueta="N° de visita" nombre="numero" f={f} setF={setF} inputMode="numeric" />
             <Campo etiqueta="Dirección" nombre="direccion" f={f} setF={setF} full />
             <Campo etiqueta="Referencia" nombre="referencia" f={f} setF={setF} full />

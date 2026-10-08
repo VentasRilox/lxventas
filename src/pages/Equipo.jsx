@@ -3,6 +3,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase, DOMINIO_USUARIOS, usuarioSugerido } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { mayus, titulo } from '../lib/reglas'
+import { errorCelular } from '../lib/validar'
 import Campo from '../components/Campo.jsx'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
@@ -270,7 +271,7 @@ export default function Equipo() {
               {esJefe && p.rol !== 'gerencia' && (
                 <label htmlFor={'tel_' + p.id}>
                   Celular (para escribirle por WhatsApp)
-                  <input id={'tel_' + p.id} inputMode="numeric" maxLength={9} defaultValue={p.telefono ?? ''} onBlur={(e) => { const v = e.target.value.replace(/\D/g, ''); if (v !== (p.telefono ?? '')) editarPerfil(p, { telefono: v }) }} />
+                  <input id={'tel_' + p.id} inputMode="numeric" maxLength={9} defaultValue={p.telefono ?? ''} placeholder="9 dígitos" onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9) }} onBlur={(e) => { const v = e.target.value; if (errorCelular(v)) { setAviso(['crit', `${titulo(p.nombre)}: ${errorCelular(v)} No se guardó.`]); return } if (v !== (p.telefono ?? '')) editarPerfil(p, { telefono: v }) }} />
                 </label>
               )}
               {p.rol === 'asesor' && esJefe && (
@@ -352,9 +353,9 @@ export default function Equipo() {
               <Campo etiqueta="Meta mensual de ventas" nombre="meta_mensual" f={nuevo} setF={setNuevo} inputMode="numeric" />
             </>
           )}
-          <Campo etiqueta="Celular" nombre="telefono" f={nuevo} setF={setNuevo} full inputMode="numeric" maxLength={9} placeholder="9 dígitos, para WhatsApp" />
+          <Campo etiqueta="Celular (para WhatsApp)" nombre="telefono" f={nuevo} setF={setNuevo} full solo="celular" />
           <Campo etiqueta="Contraseña (mínimo 6 caracteres)" nombre="contrasena" f={nuevo} setF={setNuevo} full autoCapitalize="none" autoComplete="off" minLength={6} placeholder="Déjala vacía y el sistema crea una" />
-          <button type="submit" className="btn full" disabled={ocupado}>{ocupado ? 'Creando...' : 'Crear acceso'}</button>
+          <button type="submit" className="btn full" disabled={ocupado || Boolean(errorCelular(nuevo.telefono))}>{ocupado ? 'Creando...' : 'Crear acceso'}</button>
         </form>
         <p className="small muted">
           Al crear el acceso verás su contraseña una sola vez: anótala.{esJefe ? ` El supervisor se asigna a su ${nz} en la tabla de arriba.` : ''}

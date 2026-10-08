@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { useProspectos } from '../lib/useDatos'
 import { fechaCorta, fechaLocalHoy } from '../lib/fecha'
-import { titulo } from '../lib/reglas'
+import { puedeVender, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
 const ESTADOS = [
@@ -20,6 +20,7 @@ export default function Seguimiento() {
   const [estado, setEstado] = useState('abierto')
   const [busca, setBusca] = useState('')
   const hoy = fechaLocalHoy()
+  const soloVer = !puedeVender(rol, cfg)
   const contacto = cfg?.nombre_contacto ?? 'Contacto'
 
   const lista = useMemo(() => {
@@ -35,14 +36,14 @@ export default function Seguimiento() {
     <main className="contenido contenido--angosto">
       <div className="fila">
         <h1>Cartera</h1>
-        {rol !== 'supervisor' && (
+        {!soloVer && (
           <Link to="/docente" className="btn btn--chico">
             Registrar
           </Link>
         )}
       </div>
-      {rol === 'supervisor' ? (
-        <p className="small muted">Personas que registró tu equipo. Tú solo las revisas: el seguimiento lo hace cada asesor.</p>
+      {soloVer ? (
+        <p className="small muted">Personas que registró tu equipo. Entra a cada una para llamarla o escribirle por WhatsApp. El seguimiento y la venta los hace el asesor.</p>
       ) : (
         <Link to="/seguimiento/importar" className="small">
           Agregar varios de una vez pegando una lista
@@ -80,7 +81,7 @@ export default function Seguimiento() {
           <li>
             <span className="muted">
               {estado === 'abierto'
-                ? rol === 'supervisor' ? 'Tu equipo aún no tiene personas en seguimiento.' : `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra a cada ${contacto.toLowerCase()} con el que hables y marca "Quedó interesado".`
+                ? soloVer ? 'Tu equipo aún no tiene personas en seguimiento.' : `Aún no hay ${contacto.toLowerCase()}s en seguimiento. Registra a cada ${contacto.toLowerCase()} con el que hables y marca "Quedó interesado".`
                 : 'No hay nadie en esta lista.'}
             </span>
           </li>

@@ -26,6 +26,11 @@ export function titulo(texto) {
     .join(' ')
 }
 
+// El supervisor solo registra personas y ventas si el jefe lo activa en Ajustes.
+export function puedeVender(rol, cfg) {
+  return rol === 'asesor' || rol === 'jefe' || (rol === 'supervisor' && Boolean(cfg?.supervisor_registra))
+}
+
 export function soles(centimos) {
   return 'S/ ' + Math.round((centimos ?? 0) / 100).toLocaleString('en-US')
 }

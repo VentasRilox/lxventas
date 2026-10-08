@@ -11,15 +11,15 @@ const ROLES = { asesor: 'Asesor', supervisor: 'Supervisor', jefe: 'Jefe de venta
 // El supervisor no vende: visita colegios (directores y pasajes) y sigue al equipo.
 // "Registrar" anota a una persona (y de ahí sigue a la venta si compró);
 // "Cartera" es la lista de quienes quedaron en seguimiento.
-function enlaces(rol) {
+function enlaces(rol, registra) {
   if (rol === 'asesor') return [['/hoy', 'Hoy'], ['/visita', 'Visita'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/avance', 'Mi avance']]
-  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/visita', 'Colegios'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo']]
+  if (rol === 'supervisor') return [['/panel', 'Panel'], ['/visita', 'Colegios'], ...(registra ? [['/docente', 'Registrar']] : []), ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo']]
   if (rol === 'jefe') return [['/panel', 'Panel'], ['/docente', 'Registrar'], ['/seguimiento', 'Cartera'], ['/equipo', 'Equipo'], ['/ajustes', 'Ajustes']]
   return [['/panel', 'Panel']]
 }
 
 export default function Layout() {
-  const { rol, nombre, empresaNombre, perfil } = useSesion()
+  const { rol, nombre, empresaNombre, perfil, cfg } = useSesion()
   const [porSubir, setPorSubir] = useState(pendientes())
   const [porContactar, setPorContactar] = useState(0)
   const [confirmando, setConfirmando] = useState(false)
@@ -86,7 +86,7 @@ export default function Layout() {
 
       <nav className="nav">
         <div className="nav__in">
-          {enlaces(rol).map(([ruta, texto]) => (
+          {enlaces(rol, Boolean(cfg?.supervisor_registra)).map(([ruta, texto]) => (
             <NavLink key={ruta} to={ruta} className={({ isActive }) => (isActive ? 'activo' : undefined)}>
               {texto}
               {ruta === '/hoy' && porContactar > 0 && <span className="globo">{porContactar}</span>}

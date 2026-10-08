@@ -4,7 +4,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaDeMarca, fechaLocalHoy, sumarDias } from '../lib/fecha'
-import { INTERESES, MOTIVOS, RESULTADOS_CONTACTO, diasSegunInteres, titulo } from '../lib/reglas'
+import { INTERESES, MOTIVOS, RESULTADOS_CONTACTO, diasSegunInteres, puedeVender, titulo } from '../lib/reglas'
 import { enlaceWhatsApp, fechaCorteTexto, llenarPlantilla, plantillaPara } from '../lib/mensajes'
 import Chips from '../components/Chips.jsx'
 import PantallaEstado from '../components/PantallaEstado.jsx'
@@ -17,7 +17,7 @@ export default function Prospecto() {
   const { id } = useParams()
   const navigate = useNavigate()
   const { perfil, cfg, plantillas, rol } = useSesion()
-  const soloVer = rol === 'supervisor'
+  const soloVer = !puedeVender(rol, cfg)
   const [p, setP] = useState(null)
   const [contactos, setContactos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -143,7 +143,13 @@ export default function Prospecto() {
         </p>
       </div>
       {error && <p className="aviso aviso--crit">{error}</p>}
-      {soloVer && <p className="small muted">Solo revisas: el seguimiento y la venta los hace el asesor.</p>}
+      {p.celular && (soloVer || !abierto) && (
+        <div className="acciones">
+          <a className="btn" href={`tel:+51${p.celular}`}>Llamar</a>
+          <a className="btn btn--sec" href={enlaceWhatsApp(`Buenas, ${titulo(p.nombre).split(' ')[0]}. Le saluda ${titulo(perfil.nombre)}${cfg?.firma ? ', de ' + cfg.firma : ''}.`, p.celular)} target="_blank" rel="noopener noreferrer">WhatsApp</a>
+        </div>
+      )}
+      {soloVer && <p className="small muted">{p.celular ? 'Puedes llamar o escribirle para apoyar.' : 'No tiene celular registrado.'} El seguimiento y la venta los registra el asesor.</p>}
       {!abierto && (
         <p className={`aviso ${p.estado === 'ganado' ? 'aviso--ok' : ''}`}>
           {p.estado === 'ganado' && 'Compró.'}
@@ -173,9 +179,12 @@ export default function Prospecto() {
             Mensaje listo (puedes cambiarlo antes de enviar)
             <textarea id="mensaje" style={{ minHeight: 150 }} value={texto} onChange={(e) => setTexto(e.target.value)} />
           </label>
-          <a className="btn" href={enlaceWhatsApp(texto, p.celular)} target="_blank" rel="noopener noreferrer">
-            Abrir WhatsApp de {titulo(p.nombre).split(' ')[0]}
-          </a>
+          <div className="acciones">
+            <a className="btn" href={enlaceWhatsApp(texto, p.celular)} target="_blank" rel="noopener noreferrer">
+              WhatsApp a {titulo(p.nombre).split(' ')[0]}
+            </a>
+            {p.celular && <a className="btn btn--sec" href={`tel:+51${p.celular}`}>Llamar</a>}
+          </div>
           {!mio && rol !== 'asesor' && <p className="small muted">Este {contacto.toLowerCase()} es de otro asesor. Si le escribes, queda anotado a tu nombre.</p>}
         </section>
       )}
@@ -240,7 +249,7 @@ export default function Prospecto() {
           ))}
           {contactos.length === 0 && (
             <li>
-              <span className="muted">Aún no hay contactos anotados. Envía el mensaje y marca qué pasó.</span>
+              <span className="muted">{soloVer ? 'El asesor aún no anotó ningún contacto.' : 'Aún no hay contactos anotados. Envía el mensaje y marca qué pasó.'}</span>
             </li>
           )}
         </ul>
