@@ -126,6 +126,13 @@ export function faltaContrato(venta) {
 // de cada empresa cuando haya un segundo cliente con otra escala.
 export const BASICO = { asesor: 1230, supervisor: 1500 }
 
+// Escala de premios del asesor por ventas válidas en el periodo: [ventas, soles].
+export const ESCALA_PREMIO = [[15, 300], [20, 800], [30, 1800], [40, 3800]]
+
+// Meta diaria del asesor (plan comercial). Si atiende a las 25 personas en
+// uno o dos colegios, la meta de colegios se da por cumplida.
+export const META_DIA = { personas: 25, demostraciones: 15, colegios: 7 }
+
 export function premioAsesor(ventas) {
   return ventas >= 40 ? 3800 : ventas >= 30 ? 1800 : ventas >= 20 ? 800 : ventas >= 15 ? 300 : 0
 }

@@ -7,6 +7,7 @@ import { ESTADO_CLIENTE, puntajeProspecto, titulo } from '../lib/reglas'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 import Jornada from '../components/Jornada.jsx'
 import MisCobros from '../components/MisCobros.jsx'
+import MetaDelDia from '../components/MetaDelDia.jsx'
 
 export default function Hoy() {
   const { cfg, perfil } = useSesion()
@@ -29,6 +30,7 @@ export default function Hoy() {
   return (
     <main className="contenido contenido--angosto">
       <Jornada />
+      <MetaDelDia />
       <MisCobros />
 
       <div>

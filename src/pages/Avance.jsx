@@ -6,9 +6,10 @@ import { useRango } from '../lib/useDatos'
 import { traducirError } from '../lib/errores'
 import { diaSemana, diasHabiles, fechaCorta, fechaDeMarca, fechaLocalHoy, fechaMensaje } from '../lib/fecha'
 import { periodoDe, textoPeriodo } from '../lib/periodo'
-import { esValida, estadoVenta, faltaContrato, faltaPago, mayus, soles, titulo } from '../lib/reglas'
+import { ESCALA_PREMIO, esValida, estadoVenta, faltaContrato, faltaPago, mayus, premioAsesor, soles, titulo } from '../lib/reglas'
 import { enlaceWhatsApp } from '../lib/mensajes'
 import PantallaEstado from '../components/PantallaEstado.jsx'
+import MetaDelDia from '../components/MetaDelDia.jsx'
 
 export default function Avance() {
   const { perfil, cfg, zona } = useSesion()
@@ -18,6 +19,18 @@ export default function Avance() {
   const [quitando, setQuitando] = useState(null)
   const [fallo, setFallo] = useState('')
   const [registradas, setRegistradas] = useState(0)
+  const [ranking, setRanking] = useState(null)
+
+  // Ventas válidas de cada asesor de la misma zona (la base solo entrega el conteo).
+  useEffect(() => {
+    let activo = true
+    supabase.rpc('ranking_zona', { p_desde: periodo.trae, p_hasta: periodo.hasta }).then(({ data, error: e }) => {
+      if (activo) setRanking(e ? null : data ?? [])
+    })
+    return () => {
+      activo = false
+    }
+  }, [periodo.trae, periodo.hasta])
 
   // Personas que el asesor registró hoy, para cuadrar con lo declarado en sus visitas.
   useEffect(() => {
@@ -64,6 +77,8 @@ export default function Avance() {
   const avance = hoy < periodo.desde ? 0 : diasHabiles(periodo.desde, hoy) / Math.max(1, diasHabiles(periodo.desde, periodo.hasta))
   const quedan = diasHabiles(inicio, periodo.hasta)
   const faltan = Math.max(0, meta - r.validas)
+  const ganado = premioAsesor(r.validas)
+  const siguiente = ESCALA_PREMIO.find(([n]) => r.validas < n)
 
   const resumen = [
     'RESUMEN DEL DÍA: ' + diaSemana(hoy) + ' ' + fechaMensaje(hoy, '/'),
@@ -111,6 +126,49 @@ export default function Avance() {
           {r.porRevisar > 0 && ` Tienes ${r.porRevisar} por revisar: no cuentan hasta que sean de nombrado con planilla.`}
         </p>
       </section>
+
+      <section>
+        <h2>Tu premio del periodo</h2>
+        <div className="escala">
+          {ESCALA_PREMIO.map(([n, monto]) => (
+            <div key={n} className={r.validas >= n ? 'logrado' : n === siguiente?.[0] ? 'siguiente' : undefined}>
+              <b>{n}</b>válidas<br />S/ {monto.toLocaleString('es-PE')}
+            </div>
+          ))}
+        </div>
+        <p className="small">
+          {ganado ? <b>Ya aseguraste S/ {ganado.toLocaleString('es-PE')}. </b> : 'Aún no llegas al primer premio. '}
+          {siguiente ? `Te ${siguiente[0] - r.validas === 1 ? 'falta 1 válida' : `faltan ${siguiente[0] - r.validas} válidas`} para ganar S/ ${siguiente[1].toLocaleString('es-PE')}.` : '¡Llegaste al premio máximo!'}
+          {r.sinPago > 0 && ` Si se confirma el pago de tus ${r.sinPago === 1 ? 'venta pendiente' : r.sinPago + ' ventas pendientes'}, llegas a ${r.validas + r.sinPago}.`}
+        </p>
+        <p className="small muted">Se suma a tu básico. Solo cuentan las ventas válidas: nombrado, por planilla y con la primera mensualidad confirmada.</p>
+      </section>
+
+      {ranking && ranking.length > 1 && (
+        <section>
+          <h2>Ranking de tu {(cfg?.nombre_zona ?? 'zona').toUpperCase()}</h2>
+          <ul className="lista ranking">
+            {ranking
+              .slice()
+              .sort((a, b) => b.validas - a.validas || a.nombre.localeCompare(b.nombre))
+              .map((x, i, todos) => {
+                const puesto = todos.findIndex((y) => y.validas === x.validas) + 1
+                return (
+                  <li key={x.asesor_id} className={x.es_yo ? 'yo' : undefined}>
+                    <span className="fila" style={{ justifyContent: 'flex-start', gap: 8, margin: 0 }}>
+                      <span className="puesto">{puesto}.º</span>
+                      {x.es_yo ? <b>Tú</b> : titulo(x.nombre)}
+                    </span>
+                    <span className={`pill ${puesto === 1 ? 'ok' : 'neu'}`}>{x.validas} {x.validas === 1 ? 'válida' : 'válidas'}</span>
+                  </li>
+                )
+              })}
+          </ul>
+          <p className="small muted">Ventas válidas del periodo. Se actualiza cuando el supervisor confirma los pagos.</p>
+        </section>
+      )}
+
+      <MetaDelDia />
 
       <section>
         <h2>Hoy</h2>

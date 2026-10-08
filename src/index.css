@@ -211,3 +211,17 @@ input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
 /* Casilla de sí/no con su texto al costado. */
 .casilla { display: flex; align-items: center; gap: 10px; font-weight: 500; }
 .casilla input { width: 22px; height: 22px; flex: none; margin: 0; }
+
+/* Meta del día y premio del asesor. */
+.meta-dia { display: grid; gap: 12px; }
+.meta-dia__fila { display: grid; gap: 4px; }
+.meta-dia__fila .fila { margin: 0; }
+.barra--fina { height: 8px; }
+.barra--ok i { background: var(--ok); }
+.escala { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.escala > div { border: 1px solid var(--line, #d9dee7); border-radius: 10px; padding: 8px 4px; text-align: center; font-size: var(--t-sm); line-height: 1.3; }
+.escala > div b { display: block; font-size: var(--t-md, 1rem); }
+.escala > .logrado { background: var(--ok-bg); border-color: var(--ok); color: var(--ok); }
+.escala > .siguiente { border-color: var(--accent); border-width: 2px; }
+.ranking li.yo { background: var(--ok-bg); border-radius: 10px; }
+.ranking .puesto { font-weight: 700; min-width: 2.2em; }
