@@ -15,6 +15,7 @@ import Avance from './pages/Avance.jsx'
 import Panel from './pages/Panel.jsx'
 import Equipo from './pages/Equipo.jsx'
 import Ajustes from './pages/Ajustes.jsx'
+import Formatos from './pages/Formatos.jsx'
 
 function InicioSegunRol() {
   const { rol } = useSesion()
@@ -54,6 +55,10 @@ export default function App() {
               <Route path="/seguimiento/nuevo" element={<Navigate to="/docente" replace />} />
               <Route path="/seguimiento/importar" element={<ImportarProspectos />} />
               <Route path="/avance" element={<Avance />} />
+            </Route>
+
+            <Route element={<RutaProtegida roles={['asesor', 'supervisor', 'jefe', 'gerencia']} />}>
+              <Route path="/formatos" element={<Formatos />} />
             </Route>
 
             <Route element={<RutaProtegida roles={['supervisor', 'jefe', 'gerencia']} />}>

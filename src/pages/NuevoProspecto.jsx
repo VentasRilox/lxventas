@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
@@ -29,7 +29,7 @@ function lugarRecordado() {
 }
 
 function vacio(lugar) {
-  return { nombre: '', celular: '', lugar, puesto: 'Docente', condicion: '', resultado: '', interes: 'medio', motivo: '', comentario: '', referido_por: '', volver: '' }
+  return { nombre: '', celular: '', lugar, puesto: 'Docente', condicion: '', resultado: '', interes: 'medio', motivo: '', comentario: '', referido_por: '', volver: '', producto: '', cantidad: '1', obs_merch: '' }
 }
 
 export default function NuevoProspecto() {
@@ -40,6 +40,40 @@ export default function NuevoProspecto() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [hecho, setHecho] = useState(null)
+  const [productos, setProductos] = useState([])
+
+  // Productos de merchandising ya entregados antes, para elegirlos rápido.
+  useEffect(() => {
+    let activo = true
+    supabase.from('entregas').select('producto').order('creado_en', { ascending: false }).limit(200).then(({ data }) => {
+      if (activo && data) setProductos([...new Set(data.map((x) => x.producto))].slice(0, 12))
+    })
+    return () => {
+      activo = false
+    }
+  }, [])
+
+  // Si entregó merchandising, se guarda aparte para el formato de control de entregas.
+  async function guardarEntrega(prospectoId) {
+    const producto = mayus(f.producto)
+    if (!producto) return { ok: true }
+    const ahora = new Date()
+    return guardarRegistro('entregas', {
+      empresa_id: perfil.empresa_id,
+      asesor_id: perfil.id,
+      zona_id: perfil.zona_id,
+      prospecto_id: prospectoId ?? null,
+      idem_key: `${perfil.id}|E|${celular || mayus(f.nombre)}|${producto}|${hoy}`,
+      fecha: hoy,
+      hora: `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}`,
+      nombre: mayus(f.nombre),
+      celular,
+      lugar: mayus(f.lugar),
+      producto,
+      cantidad: Math.max(1, parseInt(f.cantidad, 10) || 1),
+      observacion: mayus(f.obs_merch),
+    })
+  }
 
   const hoy = fechaLocalHoy()
   const lugarNombre = cfg?.nombre_lugar ?? 'Lugar'
@@ -100,6 +134,7 @@ export default function NuevoProspecto() {
       } catch {
         id = null
       }
+      await guardarEntrega(id)
       setGuardando(false)
       window.dispatchEvent(new Event('lxv-seguimiento'))
       navigate(id ? `/venta?prospecto=${id}` : '/venta', { state: { datos: { nombre: f.nombre, celular, lugar: f.lugar, condicion: f.condicion, desempeno: f.puesto } } })
@@ -107,11 +142,14 @@ export default function NuevoProspecto() {
     }
 
     const r = await guardarRegistro('prospectos', fila)
-    setGuardando(false)
     if (!r.ok) {
+      setGuardando(false)
       setError('No se guardó: ' + traducirError(r.error))
       return
     }
+    const e = await guardarEntrega(r.id)
+    setGuardando(false)
+    if (!e.ok) setError('La persona se guardó, pero no la entrega de merchandising: ' + traducirError(e.error))
     window.dispatchEvent(new Event('lxv-seguimiento'))
     setHecho({ id: r.id ?? null, nombre: fila.nombre, celular: fila.celular, lugar: fila.lugar, interesado, volver, pendiente: Boolean(r.pendiente) })
     setF(vacio(f.lugar))
@@ -182,6 +220,25 @@ export default function NuevoProspecto() {
           <h2>3. ¿Por qué no?</h2>
           <Chips opciones={MOTIVOS_NO} valor={f.motivo} alCambiar={(v) => setF({ ...f, motivo: v })} />
         </section>
+      )}
+
+      {f.resultado && (
+        <details className="plegable" open={Boolean(f.producto)}>
+          <summary>¿Le entregaste merchandising? (opcional)</summary>
+          <div className="grid2">
+            <label className="full" htmlFor="c_producto">
+              Producto entregado
+              <input id="c_producto" list="productos" autoComplete="off" value={f.producto} onChange={(e) => setF({ ...f, producto: e.target.value })} placeholder="Escribe o elige uno ya usado" />
+              <datalist id="productos">
+                {productos.map((x) => (
+                  <option key={x} value={titulo(x)} />
+                ))}
+              </datalist>
+            </label>
+            <Campo etiqueta="Cantidad" nombre="cantidad" f={f} setF={setF} inputMode="numeric" />
+            <Campo etiqueta="Observación" nombre="obs_merch" f={f} setF={setF} />
+          </div>
+        </details>
       )}
 
       {f.resultado === 'compro' && <p className="muted small">Al continuar pasas al cierre de venta con estos datos ya puestos. Solo faltará el programa, el DNI y el pago.</p>}

@@ -3,7 +3,7 @@ import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase, DOMINIO_USUARIOS, usuarioSugerido } from '../lib/supabase'
 import { traducirError } from '../lib/errores'
 import { mayus, titulo } from '../lib/reglas'
-import { errorCelular } from '../lib/validar'
+import { errorCelular, errorDni } from '../lib/validar'
 import Campo from '../components/Campo.jsx'
 import PantallaEstado from '../components/PantallaEstado.jsx'
 
@@ -194,6 +194,12 @@ export default function Equipo() {
             <label htmlFor={'tel_' + p.id}>
               Celular (para escribirle por WhatsApp)
               <input id={'tel_' + p.id} inputMode="numeric" maxLength={9} defaultValue={p.telefono ?? ''} placeholder="9 dígitos" onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 9) }} onBlur={(e) => { const v = e.target.value; if (errorCelular(v)) { setAviso(['crit', `${titulo(p.nombre)}: ${errorCelular(v)} No se guardó.`]); return } if (v !== (p.telefono ?? '')) editarPerfil(p, { telefono: v }) }} />
+            </label>
+          )}
+          {esJefe && p.rol !== 'gerencia' && 'dni' in p && (
+            <label htmlFor={'dni_' + p.id}>
+              DNI (sale en su planilla)
+              <input id={'dni_' + p.id} inputMode="numeric" maxLength={8} defaultValue={p.dni ?? ''} placeholder="8 dígitos" onInput={(e) => { e.target.value = e.target.value.replace(/\D/g, '').slice(0, 8) }} onBlur={(e) => { const v = e.target.value; if (errorDni(v)) { setAviso(['crit', `${titulo(p.nombre)}: ${errorDni(v)} No se guardó.`]); return } if (v !== (p.dni ?? '')) editarPerfil(p, { dni: v || null }) }} />
             </label>
           )}
           {p.rol === 'asesor' && esJefe && (

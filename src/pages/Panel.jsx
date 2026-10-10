@@ -191,6 +191,7 @@ export default function Panel() {
       <div className="fila" style={{ flexWrap: 'wrap' }}>
         <h1>Panel comercial</h1>
         <div className="fila">
+          <Link to="/formatos" className="btn btn--sec btn--chico">Formatos</Link>
           <button type="button" className="btn btn--sec btn--chico" onClick={recargarTodo}>
             {cargando ? 'Cargando…' : 'Actualizar'}
           </button>

@@ -106,7 +106,10 @@ export default function Avance() {
 
   return (
     <main className="contenido contenido--angosto">
-      <h1>Mi avance</h1>
+      <div className="fila">
+        <h1>Mi avance</h1>
+        <Link to="/formatos" className="btn btn--sec btn--chico">Mis formatos</Link>
+      </div>
       {(error || fallo) && <p className="aviso aviso--crit">{error || fallo}</p>}
 
       <section>

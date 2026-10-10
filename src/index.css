@@ -247,3 +247,8 @@ input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
 .vinculo .ok, p.ok { color: var(--ok); font-weight: 500; }
 .vinculo .falta, p.falta { color: var(--warn); font-weight: 600; }
 .grupo + .grupo { margin-top: 18px; }
+
+/* Lista de opciones para elegir (formatos). */
+.lista button.opcion { flex: 1; font: inherit; text-align: left; color: var(--ink); background: transparent; border: 0; padding: 4px 0; cursor: pointer; font-weight: 600; }
+.lista button.opcion small { font-weight: 400; color: var(--muted); }
+.lista li:has(> .opcion--elegida) { background: var(--ok-bg); box-shadow: inset 4px 0 0 var(--accent); }
