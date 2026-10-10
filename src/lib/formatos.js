@@ -13,6 +13,7 @@ export const FORMATOS = [
   { id: 'ventas', archivo: 'Reporte de ventas', nombre: 'Reporte de ventas', ayuda: 'Una fila por contrato', hoja: 'l' },
   { id: 'actividades', archivo: 'Actividades diarias', nombre: 'Actividades diarias', ayuda: 'Lo que hiciste, hora por hora', hoja: 'p' },
   { id: 'planilla', archivo: 'Planilla', nombre: 'Planilla del asesor', ayuda: 'Ingreso, salida, jornada y movilidad por día', hoja: 'p' },
+  { id: 'caja', archivo: 'Caja diaria', nombre: 'Caja diaria', ayuda: 'Mensualidades cobradas y gastos de movilidad', hoja: 'p' },
   { id: 'merchandising', archivo: 'Merchandising', nombre: 'Control de entrega de merchandising', ayuda: 'Lo que entregaste a cada docente', hoja: 'l' },
 ]
 
@@ -37,10 +38,12 @@ async function traer(asesorId, desde, hasta) {
     traerTodo(() => deEl(supabase.from('asistencias').select('*')).gte('fecha', desde).lte('fecha', hasta).order('fecha')),
     traerTodo(() => deEl(supabase.from('entregas').select('*')).gte('fecha', desde).lte('fecha', hasta).order('fecha').order('creado_en')),
   ])
-  const fallo = pr.error ?? ve.error ?? vi.error ?? as.error
+  // Para la caja: mensualidades cobradas en esas fechas, aunque la venta sea anterior.
+  const co = await traerTodo(() => deEl(supabase.from('ventas').select('*')).gte('cuota_fecha', desde).lte('cuota_fecha', hasta).in('cuota_estado', ['reportada', 'confirmada']).order('cuota_fecha'))
+  const fallo = pr.error ?? ve.error ?? vi.error ?? as.error ?? co.error
   if (fallo) throw new Error(traducirError(fallo))
   // Sin la migración 011 la tabla de entregas no existe: el formato sale vacío.
-  return { prospectos: pr.data, ventas: ve.data, visitas: vi.data, asistencias: as.data, entregas: en.error ? null : en.data }
+  return { cobros: co.data, prospectos: pr.data, ventas: ve.data, visitas: vi.data, asistencias: as.data, entregas: en.error ? null : en.data }
 }
 
 // Encabezado como el del formato de papel; devuelve dónde empieza la tabla.
@@ -194,6 +197,27 @@ export async function generarFormato({ formato, asesor, zona, desde, hasta, cfg,
     doc.setTextColor(60, 60, 60)
     const nota = 'NOTA: En los casos de tener días no trabajados durante su periodo mensual, la empresa abonará solo los días trabajados, utilizando la siguiente fórmula: se divide el valor del ingreso mensual entre los 30 días del periodo mensual, saliendo como resultado el valor por cada día de trabajo, y este resultado se multiplicará por los días trabajados, dando como resultado el monto a pagar. Así mismo, si se retira antes de la fecha de término de mes, la empresa abonará su correspondiente pago el día de la fecha de culminación de mes (sin excepciones).'
     doc.text(doc.splitTextToSize(nota, doc.internal.pageSize.getWidth() - 28), 14, Math.min(fin + 8, doc.internal.pageSize.getHeight() - 30))
+  }
+
+  if (formato === 'caja') {
+    const dias = [...new Set([...d.cobros.map((v) => v.cuota_fecha), ...d.visitas.filter((v) => v.movilidad_centimos > 0).map((v) => v.fecha)])].sort()
+    if (!dias.length) dias.push(desde)
+    dias.forEach((dia, k) => {
+      if (k > 0) doc.addPage()
+      const y = encabezado(doc, 'CAJA DIARIA', [[['NOMBRE Y APELLIDOS', nombre]], [['DÍA Y FECHA', `${titulo(diaSemana(dia))} ${fecha(dia)}`], [nz, ugel]]])
+      const ing = d.cobros.filter((v) => v.cuota_fecha === dia).map((v) => [`1.ª mensualidad de ${titulo(v.nombre)}${v.cuota_medio ? ' (' + titulo(v.cuota_medio) + (v.cuota_operacion ? ' · op. ' + v.cuota_operacion : '') + ')' : ''}${v.cuota_estado === 'confirmada' ? '' : ' · por confirmar'}`, v.cuota_centimos ?? cfg?.primera_cuota_centimos ?? 13000, 0])
+      const egr = d.visitas.filter((v) => v.fecha === dia && v.movilidad_centimos > 0).map((v) => [`Movilidad · visita a ${v.lugar}`, 0, v.movilidad_centimos])
+      const lineas = [...ing, ...egr]
+      filas += lineas.length
+      const ti = lineas.reduce((t, l) => t + l[1], 0)
+      const te = lineas.reduce((t, l) => t + l[2], 0)
+      tabla(autoTable, doc, y, ['DETALLE', 'INGRESOS', 'EGRESOS'], lineas.map((l) => [l[0], l[1] ? soles(l[1]) : '', l[2] ? soles(l[2]) : '']), {
+        styles: { fontSize: 9, cellPadding: 2.2, lineColor: [150, 150, 150], lineWidth: 0.2 },
+        columnStyles: { 1: { cellWidth: 32, halign: 'right' }, 2: { cellWidth: 32, halign: 'right' } },
+        foot: [['TOTAL', soles(ti), soles(te)], ['CAJA (ingresos - egresos)', soles(ti - te), '']],
+        footStyles: { fillColor: [230, 238, 245], textColor: [23, 55, 90], fontStyle: 'bold', halign: 'right' },
+      })
+    })
   }
 
   if (formato === 'actividades') {
