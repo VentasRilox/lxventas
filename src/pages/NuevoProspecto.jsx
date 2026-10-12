@@ -213,7 +213,7 @@ export default function NuevoProspecto() {
         <section>
           <h2>¿Le entregaste material?</h2>
           <Chips opciones={materialesPara(f.puesto)} valor={f.producto} alCambiar={(v) => setF({ ...f, producto: v })} />
-          <p className="small muted">Lapicero y tarjeta para todos. Taza y tarjeta solo para directores. Si no entregaste nada, no marques.</p>
+          <p className="small muted">Lapicero y tarjeta para todos. Al director también le puedes dar la taza. Si no entregaste nada, no marques.</p>
         </section>
       )}
 
