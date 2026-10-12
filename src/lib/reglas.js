@@ -87,6 +87,14 @@ export function montoCuota(venta, cfg) {
 
 export const MEDIOS_CUOTA = ['Yape', 'Cuenta de la empresa']
 
+// Cómo se logró la venta (sale en el IPD y en el reporte de ventas).
+export const ESTRATEGIAS = ['Charla psicológica', 'Charla informativa', 'Venta directa', 'Venta por sorteo']
+
+// Material que se entrega: lapicero y tarjeta a todos; taza y tarjeta solo a directores.
+export const MATERIAL_TODOS = 'Lapicero y tarjeta'
+export const MATERIAL_DIRECTOR = 'Taza y tarjeta'
+export const materialesPara = (puesto) => (String(puesto ?? '').toUpperCase() === 'DIRECTOR' ? [MATERIAL_TODOS, MATERIAL_DIRECTOR] : [MATERIAL_TODOS])
+
 // Cómo va el cobro de una venta sin pagar: { clase, texto, vencida }.
 // Con fecha de compromiso manda esa fecha; sin ella, los días desde la venta.
 export function estadoCompromiso(venta, hoy, diasAlerta = 3) {

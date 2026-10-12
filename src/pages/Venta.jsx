@@ -5,7 +5,7 @@ import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaLocalHoy, horaCorta, horaLocalAhora, sumarDias } from '../lib/fecha'
-import { DOCUMENTOS, MEDIOS_CUOTA, cumpleCondiciones, faltaContrato, mayus, soles, titulo } from '../lib/reglas'
+import { DOCUMENTOS, ESTRATEGIAS, MEDIOS_CUOTA, cumpleCondiciones, faltaContrato, mayus, soles, titulo } from '../lib/reglas'
 import { errorCelular } from '../lib/validar'
 import { enlaceWhatsApp, llenarPlantilla, plantillaPara, textoVenta } from '../lib/mensajes'
 import Campo from '../components/Campo.jsx'
@@ -230,6 +230,9 @@ export default function Venta() {
           <Campo etiqueta="Programa de estudio" nombre="programa" f={f} setF={setF} full autoComplete="off" list="programas" />
           <datalist id="programas">{cfg?.producto && <option value={cfg.producto} />}</datalist>
         </div>
+        <p className="etiqueta">Estrategia de venta</p>
+        <Chips opciones={ESTRATEGIAS} valor={f.estrategia} alCambiar={(v) => setF({ ...f, estrategia: v })} />
+        {f.estrategia !== '' && !ESTRATEGIAS.some((e) => mayus(e) === mayus(f.estrategia)) && <Campo etiqueta="Otra estrategia" nombre="estrategia" f={f} setF={setF} full />}
       </section>
 
       <section>
@@ -278,9 +281,8 @@ export default function Venta() {
           {f.pago !== '' && !['DESCUENTO POR PLANILLA', 'PAGO DIRECTO'].includes(mayus(f.pago)) && <Campo etiqueta="Otra modalidad" nombre="pago" f={f} setF={setF} full />}
         </div>
         <details className="plegable">
-          <summary>Más datos: estrategia, suscripción, beneficiario y observación</summary>
+          <summary>Más datos: suscripción, beneficiario y observación</summary>
           <div className="grid2">
-            <Campo etiqueta="Estrategia" nombre="estrategia" f={f} setF={setF} full />
             <Campo etiqueta="Suscripción" nombre="suscripcion" f={f} setF={setF} full />
             <Campo etiqueta="Beneficiario" nombre="beneficiario" f={f} setF={setF} full />
             <Campo etiqueta="Observación" nombre="observacion" f={f} setF={setF} full area />

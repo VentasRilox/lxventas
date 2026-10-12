@@ -1,11 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useSesion } from '../lib/SesionProvider.jsx'
 import { supabase } from '../lib/supabase'
 import { guardarRegistro } from '../lib/cola'
 import { traducirError } from '../lib/errores'
 import { fechaCorta, fechaLocalHoy, sumarDias } from '../lib/fecha'
-import { INTERESES, MOTIVOS, diasSegunInteres, mayus, titulo } from '../lib/reglas'
+import { INTERESES, MOTIVOS, diasSegunInteres, materialesPara, mayus, titulo } from '../lib/reglas'
 import { errorCelular } from '../lib/validar'
 import Campo from '../components/Campo.jsx'
 import RespuestasDuda from '../components/RespuestasDuda.jsx'
@@ -40,19 +40,6 @@ export default function NuevoProspecto() {
   const [guardando, setGuardando] = useState(false)
   const [error, setError] = useState('')
   const [hecho, setHecho] = useState(null)
-  const [productos, setProductos] = useState([])
-
-  // Productos de merchandising ya entregados antes, para elegirlos rápido.
-  useEffect(() => {
-    let activo = true
-    supabase.from('entregas').select('producto').order('creado_en', { ascending: false }).limit(200).then(({ data }) => {
-      if (activo && data) setProductos([...new Set(data.map((x) => x.producto))].slice(0, 12))
-    })
-    return () => {
-      activo = false
-    }
-  }, [])
-
   // Si entregó merchandising, se guarda aparte para el formato de control de entregas.
   async function guardarEntrega(prospectoId) {
     const producto = mayus(f.producto)
@@ -183,7 +170,7 @@ export default function NuevoProspecto() {
           <Campo etiqueta={`${lugarNombre} (se recuerda)`} nombre="lugar" f={f} setF={setF} autoComplete="off" />
         </div>
         <p className="etiqueta">Puesto</p>
-        <Chips opciones={PUESTOS} valor={f.puesto} alCambiar={(v) => setF({ ...f, puesto: v || 'Docente' })} />
+        <Chips opciones={PUESTOS} valor={f.puesto} alCambiar={(v) => { const puesto = v || 'Docente'; setF({ ...f, puesto, producto: materialesPara(puesto).some((m) => m.toUpperCase() === f.producto.toUpperCase()) ? f.producto : '' }) }} />
         <p className="etiqueta">Condición laboral</p>
         <Chips opciones={['Nombrado', 'Contratado']} valor={f.condicion} alCambiar={(v) => setF({ ...f, condicion: v })} />
       </section>
@@ -223,22 +210,11 @@ export default function NuevoProspecto() {
       )}
 
       {f.resultado && (
-        <details className="plegable" open={Boolean(f.producto)}>
-          <summary>¿Le entregaste merchandising? (opcional)</summary>
-          <div className="grid2">
-            <label className="full" htmlFor="c_producto">
-              Producto entregado
-              <input id="c_producto" list="productos" autoComplete="off" value={f.producto} onChange={(e) => setF({ ...f, producto: e.target.value })} placeholder="Escribe o elige uno ya usado" />
-              <datalist id="productos">
-                {productos.map((x) => (
-                  <option key={x} value={titulo(x)} />
-                ))}
-              </datalist>
-            </label>
-            <Campo etiqueta="Cantidad" nombre="cantidad" f={f} setF={setF} inputMode="numeric" />
-            <Campo etiqueta="Observación" nombre="obs_merch" f={f} setF={setF} />
-          </div>
-        </details>
+        <section>
+          <h2>¿Le entregaste material?</h2>
+          <Chips opciones={materialesPara(f.puesto)} valor={f.producto} alCambiar={(v) => setF({ ...f, producto: v })} />
+          <p className="small muted">Lapicero y tarjeta para todos. Taza y tarjeta solo para directores. Si no entregaste nada, no marques.</p>
+        </section>
       )}
 
       {f.resultado === 'compro' && <p className="muted small">Al continuar pasas al cierre de venta con estos datos ya puestos. Solo faltará el programa, el DNI y el pago.</p>}
