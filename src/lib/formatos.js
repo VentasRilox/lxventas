@@ -12,7 +12,7 @@ export const FORMATOS = [
   { id: 'interesados', archivo: 'Reporte de interesados', nombre: 'Reporte de interesados', ayuda: 'Quienes siguen en seguimiento', hoja: 'l' },
   { id: 'ventas', archivo: 'Reporte de ventas', nombre: 'Reporte de ventas', ayuda: 'Una fila por contrato', hoja: 'l' },
   { id: 'actividades', archivo: 'Actividades diarias', nombre: 'Actividades diarias', ayuda: 'Lo que hiciste, hora por hora', hoja: 'p' },
-  { id: 'planilla', archivo: 'Planilla', nombre: 'Planilla del asesor', ayuda: 'Ingreso, salida, jornada y movilidad por día', hoja: 'p' },
+  { id: 'planilla', archivo: 'Planilla diaria', nombre: 'Planilla diaria', ayuda: 'Ingreso, salida, jornada, ventas, visitas, demos y movilidad por día', hoja: 'l' },
   { id: 'caja', archivo: 'Caja diaria', nombre: 'Caja diaria', ayuda: 'Mensualidades cobradas y gastos de movilidad', hoja: 'p' },
   { id: 'merchandising', archivo: 'Merchandising', nombre: 'Control de entrega de merchandising', ayuda: 'Lo que entregaste a cada docente', hoja: 'l' },
 ]
@@ -165,14 +165,15 @@ export async function generarFormato({ formato, asesor, zona, desde, hasta, cfg,
 
   if (formato === 'planilla') {
     const ingreso = BASICO[asesor.rol] ?? BASICO.asesor
-    const y0 = encabezado(doc, 'PLANILLA DEL ASESOR', [
+    const y0 = encabezado(doc, 'PLANILLA DIARIA', [
       [['NOMBRE Y APELLIDOS', nombre]],
       [['DNI', asesor.dni ?? ''], ['INGRESO MENSUAL', `S/ ${ingreso.toLocaleString('es-PE')}.00`]],
-      [['FECHA DE INICIO', fecha(desde)], ['FECHA DE TÉRMINO', fecha(hasta)]],
+      [['FECHA DE INICIO DE MES', fecha(desde)], ['FECHA DE TÉRMINO DE MES', fecha(hasta)]],
     ])
     const cuerpo = []
     let dias = 0
     let movTotal = 0
+    const tot = { ven: 0, vis: 0, dem: 0 }
     for (let dia = desde; dia <= hasta; dia = sumarDias(dia, 1)) {
       const dow = new Date(`${dia}T12:00:00`).getDay()
       const a = d.asistencias.find((x2) => x2.fecha === dia)
@@ -180,22 +181,37 @@ export async function generarFormato({ formato, asesor, zona, desde, hasta, cfg,
       const vis = d.visitas.filter((v) => v.fecha === dia)
       const mov = vis.reduce((s, v) => s + (v.movilidad_centimos ?? 0), 0)
       const ven = d.ventas.filter((v) => v.fecha === dia).length
-      const reg = d.prospectos.filter((p) => fechaDeMarca(p.creado_en) === dia).length
+      const dem = d.prospectos.filter((p) => fechaDeMarca(p.creado_en) === dia).length
+      // Docentes visitados: lo que el asesor puso en "atendidos" (o, si es más, los registrados).
+      const visitados = Math.max(vis.reduce((s, v) => s + (v.contactos ?? 0), 0), dem)
       const jornada = !a?.hora_ingreso ? '' : dow === 6 || (a.hora_salida && a.hora_salida <= '13:30') ? 'Medio día' : 'Todo el día'
+      const hubo = Boolean(a?.hora_ingreso || vis.length || dem || ven)
       if (a?.hora_ingreso) dias++
       movTotal += mov
-      cuerpo.push([horaCorta(a?.hora_ingreso), horaCorta(a?.hora_salida), titulo(diaSemana(dia)), fecha(dia), jornada, a?.hora_ingreso || vis.length ? unir(vis.length && `${vis.length} colegios`, reg && `${reg} registrados`, ven && `${ven} ${ven === 1 ? 'venta' : 'ventas'}`) || 'Sin registros' : '', mov ? soles(mov) : '', ''])
+      tot.ven += ven
+      tot.vis += visitados
+      tot.dem += dem
+      cuerpo.push([horaCorta(a?.hora_ingreso), horaCorta(a?.hora_salida), titulo(diaSemana(dia)), fecha(dia), jornada, hubo ? ven : '', hubo ? visitados : '', hubo ? dem : '', mov ? soles(mov) : '', '', ''])
     }
     filas = dias
-    const fin = tabla(autoTable, doc, y0, ['HORA DE INGRESO', 'HORA DE SALIDA', 'DÍA', 'FECHA', 'JORNADA (TODO EL DÍA O MEDIO DÍA)', 'RESULTADO DEL DÍA', 'MOVILIDAD', 'ADELANTO (+/-)'], cuerpo, {
-      columnStyles: { ...centrar([0, 1, 3, 4, 6]), 5: { cellWidth: 48 } },
-      foot: [['', '', '', 'TOTAL', `${dias} días con ingreso`, '', soles(movTotal), '']],
+    const fin = tabla(autoTable, doc, y0, ['', '', '', '', '', '', '', '', '', '', ''], cuerpo, {
+      head: [
+        [
+          { content: 'HORA DE INGRESO', rowSpan: 2 }, { content: 'HORA DE SALIDA', rowSpan: 2 }, { content: 'DÍA', rowSpan: 2 }, { content: 'FECHA', rowSpan: 2 },
+          { content: 'JORNADA (ES TODO EL DÍA O MEDIO DÍA)', rowSpan: 2 }, { content: 'RESULTADO DEL DÍA', colSpan: 3 },
+          { content: 'MOVILIDAD', rowSpan: 2 }, { content: 'ADELANTO', rowSpan: 2 }, { content: '+ / -', rowSpan: 2 },
+        ],
+        ['VENTA', '# VISITA', '# DEMOS'],
+      ],
+      headStyles: { fillColor: AZUL, textColor: 255, fontStyle: 'bold', halign: 'center', valign: 'middle', fontSize: 7.5 },
+      columnStyles: { ...centrar([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]) },
+      foot: [['', '', '', 'TOTAL', `${dias} días con ingreso`, String(tot.ven), String(tot.vis), String(tot.dem), soles(movTotal), '', '']],
       footStyles: { fillColor: [230, 238, 245], textColor: [23, 55, 90], fontStyle: 'bold', halign: 'center' },
     })
     doc.setFont('helvetica', 'normal')
     doc.setFontSize(7.5)
     doc.setTextColor(60, 60, 60)
-    const nota = 'NOTA: En los casos de tener días no trabajados durante su periodo mensual, la empresa abonará solo los días trabajados, utilizando la siguiente fórmula: se divide el valor del ingreso mensual entre los 30 días del periodo mensual, saliendo como resultado el valor por cada día de trabajo, y este resultado se multiplicará por los días trabajados, dando como resultado el monto a pagar. Así mismo, si se retira antes de la fecha de término de mes, la empresa abonará su correspondiente pago el día de la fecha de culminación de mes (sin excepciones).'
+    const nota = 'NOTA: En los casos de tener días no trabajados durante su periodo mensual, la empresa abonará solo los días trabajados, utilizando la siguiente fórmula: se divide el valor del ingreso mensual entre los 30 días del periodo mensual, saliendo como resultado el valor por cada día de trabajo, y este resultado se multiplicará por los días trabajados, dando como resultado el monto a pagar.'
     doc.text(doc.splitTextToSize(nota, doc.internal.pageSize.getWidth() - 28), 14, Math.min(fin + 8, doc.internal.pageSize.getHeight() - 30))
   }
 
