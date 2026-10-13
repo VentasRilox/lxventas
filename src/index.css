@@ -252,3 +252,17 @@ input[aria-invalid='true'] { border-color: var(--crit, #b3261e); }
 .lista button.opcion { flex: 1; font: inherit; text-align: left; color: var(--ink); background: transparent; border: 0; padding: 4px 0; cursor: pointer; font-weight: 600; }
 .lista button.opcion small { font-weight: 400; color: var(--muted); }
 .lista li:has(> .opcion--elegida) { background: var(--ok-bg); box-shadow: inset 4px 0 0 var(--accent); }
+
+/* ---------- Avance de hoy (panel) ---------- */
+.barra--marcas { overflow: visible; }
+.barra--marcas i { border-radius: 6px; }
+.barra--marcas s { position: absolute; top: -3px; bottom: -3px; width: 2px; margin-left: -1px; background: var(--ink); text-decoration: none; }
+.marcas { position: relative; height: 16px; font-size: var(--t-xs); color: var(--muted); }
+.marcas small { position: absolute; transform: translateX(-50%); font-weight: 600; }
+.marcas small:last-child { transform: translateX(-100%); }
+.avance-asesores li { display: block; }
+.avance-asesor { display: grid; gap: 8px; width: 100%; }
+.tabs--mas { padding-top: 4px; border-top: 1px dashed var(--line); }
+.tres-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+.tres-mini > div { display: grid; gap: 2px; min-width: 0; }
+.tres-mini b { font-size: var(--t-sm); font-variant-numeric: tabular-nums; }

@@ -12,11 +12,18 @@ import Cobros from './panel/Cobros.jsx'
 import Asistencia from './panel/Asistencia.jsx'
 import DescargarExcel from '../components/DescargarExcel.jsx'
 import Registros from './panel/Registros.jsx'
+import AvanceHoy from './panel/AvanceHoy.jsx'
 
+// Pestañas a la vista y las demás dentro de "Más", para que el panel no maree.
 const TABS = {
-  supervisor: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['asesores', 'Mi equipo'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento']],
-  jefe: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['supervisores', 'Supervisores'], ['asesores', 'Asesores'], ['ventas', 'Ventas'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
-  gerencia: [['resumen', 'Resumen'], ['cobros', 'Cobros'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['supervisores', 'Supervisores'], ['ventas', 'Ventas'], ['dinero', 'Dinero']],
+  supervisor: [['hoy', 'Avance de hoy'], ['cobros', 'Cobros'], ['ventas', 'Ventas'], ['asesores', 'Mi equipo']],
+  jefe: [['hoy', 'Avance de hoy'], ['cobros', 'Cobros'], ['ventas', 'Ventas'], ['asesores', 'Equipo']],
+  gerencia: [['hoy', 'Avance de hoy'], ['cobros', 'Cobros'], ['ventas', 'Ventas'], ['supervisores', 'Supervisores']],
+}
+const MAS = {
+  supervisor: [['resumen', 'Resumen del mes'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['seguimiento', 'Seguimiento']],
+  jefe: [['resumen', 'Resumen del mes'], ['supervisores', 'Supervisores'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
+  gerencia: [['resumen', 'Resumen del mes'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['dinero', 'Dinero']],
 }
 
 function Pill({ e }) {
@@ -137,7 +144,9 @@ export default function Panel() {
   const { rol, perfil, cfg, zonas, empresaNombre } = useSesion()
   const hoy = fechaLocalHoy()
   const [salto, setSalto] = useState(0)
-  const [tab, setTab] = useState('resumen')
+  const [tab, setTab] = useState('hoy')
+  const [verMas, setVerMas] = useState(false)
+  const [vuelta, setVuelta] = useState(0)
   const seguimiento = useProspectos()
   const pagos = useCobros()
   const [perfiles, setPerfiles] = useState([])
@@ -163,7 +172,9 @@ export default function Panel() {
   )
 
   const tabs = TABS[rol] ?? TABS.gerencia
-  const actual = tabs.some((t) => t[0] === tab) ? tab : 'resumen'
+  const mas = MAS[rol] ?? MAS.gerencia
+  const actual = [...tabs, ...mas].some((t) => t[0] === tab) ? tab : 'hoy'
+  const enMas = mas.some((t) => t[0] === actual)
   const nz = cfg?.nombre_zona ?? 'Zona'
   const contacto = cfg?.nombre_contacto ?? 'Contacto'
   const valorVenta = cfg?.valor_venta_centimos ?? 0
@@ -181,6 +192,7 @@ export default function Panel() {
   const cuota = cfg?.primera_cuota_centimos ?? 13000
   const porConfirmar = pagos.cobros.filter((v) => v.cuota_estado === 'reportada').length
   const recargarTodo = () => {
+    setVuelta((n) => n + 1)
     recargar()
     seguimiento.recargar()
     pagos.recargar()
@@ -210,17 +222,33 @@ export default function Panel() {
 
       <div className="tabs">
         {tabs.map(([v, t]) => (
-          <button key={v} type="button" className="tab" aria-pressed={actual === v} onClick={() => setTab(v)}>
+          <button key={v} type="button" className="tab" aria-pressed={actual === v} onClick={() => { setTab(v); setVerMas(false) }}>
             {t}
             {v === 'cobros' && pagos.cobros.length > 0 && ` (${pagos.cobros.length})`}
           </button>
         ))}
+        <button type="button" className="tab" aria-pressed={enMas} aria-expanded={verMas || enMas} onClick={() => setVerMas(!verMas)}>
+          {enMas ? mas.find((t) => t[0] === actual)[1] : 'Más'} {verMas ? '▴' : '▾'}
+        </button>
       </div>
+      {verMas && (
+        <div className="tabs tabs--mas">
+          {mas.map(([v, t]) => (
+            <button key={v} type="button" className="tab" aria-pressed={actual === v} onClick={() => { setTab(v); setVerMas(false) }}>
+              {t}
+            </button>
+          ))}
+        </div>
+      )}
 
       {cargando && visitas.length + ventas.length === 0 ? (
         <PantallaEstado mensaje="Cargando..." />
       ) : (
         <>
+          {actual === 'hoy' && (
+            <AvanceHoy key={vuelta} zonas={C.zonas} asesores={C.asesores} hoy={hoy} cfg={cfg} nombreDe={nombreDe} />
+          )}
+
           {actual === 'resumen' && (
             <>
               <section>
