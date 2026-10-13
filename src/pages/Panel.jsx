@@ -21,9 +21,9 @@ const TABS = {
   gerencia: [['hoy', 'Avance de hoy'], ['cobros', 'Cobros'], ['ventas', 'Ventas'], ['supervisores', 'Supervisores']],
 }
 const MAS = {
-  supervisor: [['resumen', 'Resumen del mes'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['seguimiento', 'Seguimiento']],
-  jefe: [['resumen', 'Resumen del mes'], ['supervisores', 'Supervisores'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
-  gerencia: [['resumen', 'Resumen del mes'], ['asistencia', 'Asistencia'], ['registros', 'Registros'], ['dinero', 'Dinero']],
+  supervisor: [['resumen', 'Resumen del mes'], ['asistencia', 'Asistencia'], ['registros', 'Colegios visitados'], ['seguimiento', 'Seguimiento']],
+  jefe: [['resumen', 'Resumen del mes'], ['supervisores', 'Supervisores'], ['asistencia', 'Asistencia'], ['registros', 'Colegios visitados'], ['seguimiento', 'Seguimiento'], ['dinero', 'Dinero']],
+  gerencia: [['resumen', 'Resumen del mes'], ['asistencia', 'Asistencia'], ['registros', 'Colegios visitados'], ['dinero', 'Dinero']],
 }
 
 function Pill({ e }) {
@@ -446,7 +446,7 @@ export default function Panel() {
           )}
 
           {actual === 'registros' && (
-            <Registros visitas={C.visitasPeriodo} prospectos={seguimiento.prospectos} desde={C.desde} hasta={C.hasta} nombreDe={nombreDe} cfg={cfg} />
+            <Registros visitas={C.visitasPeriodo} ventas={C.ventasPeriodo} zonas={C.zonas} prospectos={seguimiento.prospectos} desde={C.desde} hasta={C.hasta} nombreDe={nombreDe} cfg={cfg} />
           )}
 
           {actual === 'seguimiento' && (
